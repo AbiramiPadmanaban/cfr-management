@@ -11,17 +11,47 @@ export interface CfrPublicFeedbackViewProps {
   feedback: CfrPublicFeedback;
 }
 
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
 function formatDate(value: Date | string): string {
-  return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const date = new Date(value);
+  return `${MONTH_SHORT[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function formatDateTime(value: Date | string): string {
+  const date = new Date(value);
+  const hours24 = date.getHours();
+  const hours12 = hours24 % 12 || 12;
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const ampm = hours24 >= 12 ? "pm" : "am";
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${hours12}:${minutes}:${seconds} ${ampm}`;
+}
+
+function todayDateInputValue(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function CfrFeedbackThankYou({ feedback }: { feedback: CfrPublicFeedback }) {
   return (
-    <div className="mx-auto max-w-xl space-y-6 text-center">
+    <div className="mx-auto max-w-2xl space-y-6 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
         <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
@@ -29,23 +59,14 @@ function CfrFeedbackThankYou({ feedback }: { feedback: CfrPublicFeedback }) {
       </div>
       <div className="space-y-2">
         <h1 className="text-3xl font-black tracking-tight text-slate-900">
-          Thank you for your feedback
+          Thank you for your valuable feedback!
         </h1>
         <p className="text-sm leading-6 text-slate-500">
-          Your customer feedback review for{" "}
+          Your feedback for{" "}
           <span className="font-semibold text-slate-800">{feedback.projectName}</span> has been
-          submitted successfully. The project team will use your ratings and comments to improve
-          delivery quality.
+          submitted successfully. Your ratings and comments will help our project team
+          continuously improve the quality of our services.
         </p>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Project</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">{feedback.projectName}</p>
-        <p className="mt-1 text-xs font-mono text-slate-400">{feedback.projectNumber}</p>
-        <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Review Period
-        </p>
-        <p className="mt-1 text-sm font-medium text-slate-700">{feedback.reviewPeriod}</p>
       </div>
       <p className="text-xs text-slate-400">You may now close this window.</p>
     </div>
@@ -65,13 +86,7 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
   const [overallSatisfactionRemarks, setOverallSatisfactionRemarks] = useState("");
   const [comments, setComments] = useState("");
   const [reviewedBy, setReviewedBy] = useState("");
-  const [reviewedAt, setReviewedAt] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
+  const reviewedAt = todayDateInputValue();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedFeedback, setSubmittedFeedback] = useState<CfrPublicFeedback | null>(
@@ -98,7 +113,6 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
     if (technicalCompetence === 0) newErrors.technicalCompetence = "Technical Competence is required";
     if (overallSatisfaction === 0) newErrors.overallSatisfaction = "Overall Satisfaction is required";
     if (!reviewedBy.trim()) newErrors.reviewedBy = "Reviewed By is required";
-    if (!reviewedAt) newErrors.reviewedAt = "Date is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -124,7 +138,7 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
         overallSatisfactionRemarks: overallSatisfactionRemarks.trim() || null,
         comments: comments.trim() || null,
         reviewedBy: reviewedBy.trim(),
-        reviewedAt,
+        reviewedAt: todayDateInputValue(),
       });
       setSubmittedFeedback(result);
     } catch (err: unknown) {
@@ -136,13 +150,13 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-12">
+    <div className="w-full space-y-6 pb-12">
       <div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Provide Feedback</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Please rate each criterion and add remarks. No login is required.
+          Please rate each criterion and add remarks.
           {feedback.expiresAt && !feedback.expired && (
-            <> This link expires on {new Date(feedback.expiresAt).toLocaleString()}.</>
+            <> This link expires on {formatDateTime(feedback.expiresAt)}.</>
           )}
         </p>
       </div>
@@ -252,19 +266,15 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Date <span className="text-red-500">*</span>
+              Date
             </label>
             <input
               type="date"
               value={reviewedAt}
-              onChange={(e) => setReviewedAt(e.target.value)}
-              className={`h-10 w-full rounded-lg border bg-white px-3.5 text-sm text-slate-800 outline-none focus:border-[#1a3574] ${
-                errors.reviewedAt ? "border-red-500" : "border-slate-200"
-              }`}
+              readOnly
+              tabIndex={-1}
+              className="pointer-events-none h-10 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700"
             />
-            {errors.reviewedAt && (
-              <span className="text-xs text-red-500">{errors.reviewedAt}</span>
-            )}
           </div>
         </div>
       </div>
@@ -288,7 +298,7 @@ export function CfrExpiredFeedbackView() {
     <div className="mx-auto max-w-lg space-y-3 text-center">
       <h1 className="text-3xl font-black tracking-tight text-slate-900">Feedback link expired</h1>
       <p className="text-sm leading-6 text-slate-500">
-        This customer feedback link expired after 24 hours. Please contact your project lead to send
+        This customer feedback link expired after 24 hours. Please contact the administrator to send
         a new request.
       </p>
     </div>
@@ -301,7 +311,7 @@ export function CfrInvalidFeedbackView() {
       <h1 className="text-3xl font-black tracking-tight text-slate-900">Invalid feedback link</h1>
       <p className="text-sm leading-6 text-slate-500">
         This customer feedback link is invalid, expired, or is no longer available. Please contact
-        your project lead if you still need to submit a review.
+        the administrator if you still need to submit a review.
       </p>
     </div>
   );

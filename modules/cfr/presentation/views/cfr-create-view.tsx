@@ -244,7 +244,10 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="text"
             value={client}
-            onChange={(e) => setClient(e.target.value)}
+            onChange={(e) => {
+              setClient(e.target.value);
+              clearError("client");
+            }}
             placeholder="Enter Client name..."
             className={fieldClass(Boolean(errors.client))}
           />
@@ -256,7 +259,10 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="email"
             value={clientEmail}
-            onChange={(e) => setClientEmail(e.target.value)}
+            onChange={(e) => {
+              setClientEmail(e.target.value);
+              clearError("clientEmail");
+            }}
             placeholder="client@company.com"
             className={fieldClass(Boolean(errors.clientEmail))}
           />
@@ -268,7 +274,18 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="text"
             value={projectNumber}
-            onChange={(e) => setProjectNumber(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setProjectNumber(value);
+              if (isProjectNumberTaken(value, projectId)) {
+                setErrors((prev) => ({
+                  ...prev,
+                  projectNumber: "Project number already exists",
+                }));
+              } else {
+                clearError("projectNumber");
+              }
+            }}
             placeholder="Enter Project Number..."
             className={fieldClass(Boolean(errors.projectNumber))}
           />
@@ -282,7 +299,10 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="text"
             value={reviewPeriod}
-            onChange={(e) => setReviewPeriod(e.target.value)}
+            onChange={(e) => {
+              setReviewPeriod(e.target.value);
+              clearError("reviewPeriod");
+            }}
             placeholder="e.g. Q1 2026"
             className={fieldClass(Boolean(errors.reviewPeriod))}
           />
@@ -296,7 +316,10 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="date"
             value={formatDateToInput(projectStartDate)}
-            onChange={(e) => setProjectStartDate(e.target.value ? new Date(e.target.value) : null)}
+            onChange={(e) => {
+              setProjectStartDate(parseLocalDate(e.target.value));
+              clearError("projectStartDate");
+            }}
             className={fieldClass(Boolean(errors.projectStartDate))}
           />
           {errors.projectStartDate && (
@@ -309,7 +332,10 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           <input
             type="date"
             value={formatDateToInput(projectEndDate)}
-            onChange={(e) => setProjectEndDate(e.target.value ? new Date(e.target.value) : null)}
+            onChange={(e) => {
+              setProjectEndDate(parseLocalDate(e.target.value));
+              clearError("projectEndDate");
+            }}
             className={fieldClass(Boolean(errors.projectEndDate))}
           />
           {errors.projectEndDate && (

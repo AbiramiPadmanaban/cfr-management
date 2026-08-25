@@ -38,7 +38,7 @@ export function CfrFilters({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by CFR ID, project or client"
+            placeholder="Search by project or client"
             className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
           />
         </div>
@@ -102,7 +102,6 @@ export function CfrFilters({
             }}
           >
             <option value="">All Statuses</option>
-            <option value="DRAFT">Draft</option>
             <option value="SENT">Sent</option>
             <option value="SUBMITTED">Submitted</option>
           </select>

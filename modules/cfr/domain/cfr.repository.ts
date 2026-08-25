@@ -93,7 +93,7 @@ export function isFeedbackLinkExpired(
 export interface CfrKpis {
   total: number;
   submitted: number;
-  draft: number;
+  sent: number;
   averageRating: number;
 }
 

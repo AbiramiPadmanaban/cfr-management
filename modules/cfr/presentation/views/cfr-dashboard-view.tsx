@@ -66,8 +66,7 @@ export function CfrDashboardView({ kpis, recentCfrs }: CfrDashboardViewProps) {
             <table className="w-full min-w-[980px] border-collapse text-left text-sm text-slate-650">
               <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 font-bold">CFR ID</th>
-                  <th className="px-4 py-3 font-bold">PROJECT & ID</th>
+                  <th className="px-4 py-3 font-bold">PROJECT</th>
                   <th className="px-4 py-3 font-bold">CLIENT</th>
                   <th className="px-4 py-3 font-bold">OVERALL RATING</th>
                   <th className="px-4 py-3 font-bold">STATUS</th>
@@ -80,9 +79,6 @@ export function CfrDashboardView({ kpis, recentCfrs }: CfrDashboardViewProps) {
               <tbody className="divide-y divide-slate-100">
                 {recentCfrs.map((cfr) => (
                   <tr key={cfr.id} className="hover:bg-slate-50/40 transition-colors">
-                    <td className="px-4 py-4 font-semibold text-slate-900">
-                      #{cfr.id}
-                    </td>
                     <td className="px-4 py-4">
                       <div className="font-semibold text-slate-900">
                         {cfr.project.projectName}

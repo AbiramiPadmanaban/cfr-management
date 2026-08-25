@@ -41,18 +41,18 @@ export function CfrKpiCards({ kpis }: CfrKpiCardsProps) {
         </div>
       </div>
 
-      {/* 3. Draft */}
+      {/* 3. Sent */}
       <div className="flex justify-between items-start rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div>
-          <span className="text-sm font-semibold text-slate-700">Draft</span>
+          <span className="text-sm font-semibold text-slate-700">Sent</span>
           <p className="mt-2 text-3.5xl font-extrabold text-slate-900 leading-none">
-            {kpis.draft}
+            {kpis.sent}
           </p>
-          <span className="mt-3 block text-xs text-slate-450">Saved in progress draft logs</span>
+          <span className="mt-3 block text-xs text-slate-450">Awaiting client feedback</span>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
           </svg>
         </div>
       </div>

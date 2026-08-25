@@ -36,7 +36,6 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
         <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
           <tr>
             <th className="px-5 py-3.5">#</th>
-            <th className="px-5 py-3.5">CFR ID</th>
             <th className="px-5 py-3.5">Project</th>
             <th className="px-5 py-3.5">Department / Vertical</th>
             <th className="px-5 py-3.5">Client</th>
@@ -65,10 +64,6 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
                 {/* Row Number */}
                 <td className="px-5 py-4 text-slate-400 font-medium">
                   {index + 1}
-                </td>
-                {/* CFR ID */}
-                <td className="px-5 py-4 font-bold text-slate-900">
-                  #{cfr.id}
                 </td>
                 {/* Project Name and Number */}
                 <td className="px-5 py-4">

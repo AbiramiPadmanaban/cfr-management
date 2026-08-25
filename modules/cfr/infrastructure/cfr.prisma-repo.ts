@@ -122,7 +122,6 @@ export class PrismaCfrRepository implements CfrRepository {
     let resolvedProjectId = data.projectId;
 
     if (!resolvedProjectId) {
-      // Find project by department and projectName (case-insensitive)
       const existingProject = await prisma.project.findFirst({
         where: {
           departmentId: data.departmentId,
@@ -135,19 +134,45 @@ export class PrismaCfrRepository implements CfrRepository {
 
       if (existingProject) {
         resolvedProjectId = existingProject.id;
-      } else {
-        // Create new project
+      }
+    }
+
+    const duplicateNumber = await prisma.project.findFirst({
+      where: {
+        projectNumber: {
+          equals: data.projectNumber.trim(),
+          mode: "insensitive",
+        },
+        ...(resolvedProjectId ? { id: { not: resolvedProjectId } } : {}),
+      },
+    });
+
+    if (duplicateNumber) {
+      throw new Error("Project number already exists");
+    }
+
+    if (!resolvedProjectId) {
+      try {
         const newProject = await prisma.project.create({
           data: {
             departmentId: data.departmentId,
             projectName: data.projectName,
-            projectNumber: data.projectNumber,
+            projectNumber: data.projectNumber.trim(),
             clientName: data.client,
             projectStartDate: data.projectStartDate,
             projectEndDate: data.projectEndDate,
           },
         });
         resolvedProjectId = newProject.id;
+      } catch (error) {
+        const code =
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code: unknown }).code)
+            : "";
+        if (code === "P2002") {
+          throw new Error("Project number already exists");
+        }
+        throw error;
       }
     }
 
@@ -170,7 +195,7 @@ export class PrismaCfrRepository implements CfrRepository {
         comments: isClientCompleted ? data.comments : null,
         status: data.status,
         client: data.client,
-        projectNumber: data.projectNumber,
+        projectNumber: data.projectNumber.trim(),
         clientEmail: data.clientEmail,
         feedbackToken: data.status === "SENT" ? randomBytes(32).toString("hex") : null,
         feedbackSentAt: data.status === "SENT" ? new Date() : null,
@@ -295,20 +320,20 @@ export class PrismaCfrRepository implements CfrRepository {
     const averageRating = aggregate._avg.overallSatisfaction || 0;
 
     let submitted = 0;
-    let draft = 0;
+    let sent = 0;
 
     for (const group of statusCounts) {
       if (group.status === "SUBMITTED") {
         submitted = group._count.id;
-      } else if (group.status === "DRAFT") {
-        draft = group._count.id;
+      } else if (group.status === "SENT") {
+        sent = group._count.id;
       }
     }
 
     return {
       total,
       submitted,
-      draft,
+      sent,
       averageRating: parseFloat(averageRating.toFixed(2)),
     };
   }

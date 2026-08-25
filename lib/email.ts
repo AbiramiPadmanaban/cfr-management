@@ -46,7 +46,7 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
               <td style="padding:32px;">
                 <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Hi ${escapeHtml(input.clientName)},</p>
                 <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#334155;">
-                  You have been invited to provide customer feedback for the following project. Please rate <strong>Quality of Work</strong>, Delivery Timeliness, <strong>Communication Quality</strong>, Technical Competence, and Overall Satisfaction.
+                  You have been invited to provide customer feedback for the following project. Please rate Quality of Work, Delivery Timeliness, Communication Quality, Technical Competence, and Overall Satisfaction.
                 </p>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
                   <tr>
