@@ -3,21 +3,33 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { PrismaCfrRepository } from "../../infrastructure/cfr.prisma-repo";
-import type { CfrFilterInput, CfrCreateInput, CfrUpdateInput } from "../../domain/cfr.repository";
+import type { CfrFilterInput, CfrCreateInput } from "../../domain/cfr.repository";
 
 const cfrRepo = new PrismaCfrRepository();
 
 const cfrInputSchema = z.object({
-  projectId: z.string().min(1, "Project is required"),
+  projectId: z.string().nullable().optional(),
+  departmentId: z.string().min(1, "Department is required"),
+  projectName: z.string().min(1, "Project Name is required"),
   reviewPeriod: z.string().min(1, "Review period is required"),
-  qualityRating: z.coerce.number().int().min(1).max(5),
-  deliveryRating: z.coerce.number().int().min(1).max(5),
-  communicationRating: z.coerce.number().int().min(1).max(5),
-  technicalCompetence: z.coerce.number().int().min(1).max(5),
-  overallSatisfaction: z.coerce.number().int().min(1).max(5),
+  qualityRating: z.coerce.number().min(1).max(5),
+  deliveryRating: z.coerce.number().min(1).max(5),
+  communicationRating: z.coerce.number().min(1).max(5),
+  technicalCompetence: z.coerce.number().min(1).max(5),
+  overallSatisfaction: z.coerce.number().min(1).max(5),
   comments: z.string().nullable().optional(),
   status: z.enum(["DRAFT", "SENT", "SUBMITTED"] as const),
-});
+  client: z.string().min(1, "Client is required"),
+  projectNumber: z.string().min(1, "Project Number is required"),
+  projectStartDate: z.string().or(z.date()).transform((val) => new Date(val)),
+  projectEndDate: z.string().or(z.date()).transform((val) => new Date(val)),
+}).refine(
+  (data) => data.projectEndDate >= data.projectStartDate,
+  {
+    message: "Project End Date must be on or after Project Start Date",
+    path: ["projectEndDate"],
+  }
+);
 
 export async function getDepartmentsAction() {
   try {
@@ -28,9 +40,9 @@ export async function getDepartmentsAction() {
   }
 }
 
-export async function getCfrsAction(filters?: CfrFilterInput) {
+export async function getCfrsAction(filters?: CfrFilterInput, page?: number, limit?: number) {
   try {
-    return await cfrRepo.getCfrs(filters);
+    return await cfrRepo.getCfrs(filters, page, limit);
   } catch (error) {
     console.error("Failed to fetch CFRs:", error);
     throw new Error("Failed to fetch CFRs");
@@ -46,7 +58,7 @@ export async function getKpisAction() {
   }
 }
 
-export async function createCfrAction(data: CfrCreateInput) {
+export async function createCfrAction(data: Record<string, unknown>) {
   try {
     const validated = cfrInputSchema.parse(data);
     const result = await cfrRepo.createCfr(validated);
@@ -58,31 +70,5 @@ export async function createCfrAction(data: CfrCreateInput) {
       throw new Error(error.issues.map((issue) => issue.message).join(", "));
     }
     throw new Error("Failed to create CFR");
-  }
-}
-
-export async function updateCfrAction(id: number, data: CfrUpdateInput) {
-  try {
-    const validated = cfrInputSchema.partial().parse(data);
-    const result = await cfrRepo.updateCfr(id, validated);
-    revalidatePath("/cfr");
-    return result;
-  } catch (error) {
-    console.error("Failed to update CFR:", error);
-    if (error instanceof z.ZodError) {
-      throw new Error(error.issues.map((issue) => issue.message).join(", "));
-    }
-    throw new Error("Failed to update CFR");
-  }
-}
-
-export async function deleteCfrAction(id: number) {
-  try {
-    const result = await cfrRepo.deleteCfr(id);
-    revalidatePath("/cfr");
-    return result;
-  } catch (error) {
-    console.error("Failed to delete CFR:", error);
-    throw new Error("Failed to delete CFR");
   }
 }

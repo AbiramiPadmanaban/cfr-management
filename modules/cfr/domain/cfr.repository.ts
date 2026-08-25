@@ -14,7 +14,11 @@ export interface CfrFilterInput {
 }
 
 export interface CfrCreateInput {
-  projectId: string;
+  projectId?: string | null;
+  departmentId: string;
+  projectName: string;
+  projectStartDate: Date;
+  projectEndDate: Date;
   reviewPeriod: string;
   qualityRating: number;
   deliveryRating: number;
@@ -23,9 +27,9 @@ export interface CfrCreateInput {
   overallSatisfaction: number;
   comments?: string | null;
   status?: CfrStatus;
+  client: string;
+  projectNumber: string;
 }
-
-export interface CfrUpdateInput extends Partial<CfrCreateInput> {}
 
 export interface CfrKpis {
   total: number;
@@ -36,10 +40,12 @@ export interface CfrKpis {
 
 export interface CfrRepository {
   getDepartments(): Promise<(Department & { projects: Project[] })[]>;
-  getCfrs(filters?: CfrFilterInput): Promise<CfrWithProject[]>;
+  getCfrs(
+    filters?: CfrFilterInput,
+    page?: number,
+    limit?: number
+  ): Promise<{ cfrs: CfrWithProject[]; totalCount: number }>;
   getCfrById(id: number): Promise<CfrWithProject | null>;
   createCfr(data: CfrCreateInput): Promise<Cfr>;
-  updateCfr(id: number, data: CfrUpdateInput): Promise<Cfr>;
-  deleteCfr(id: number): Promise<Cfr>;
   getKpis(): Promise<CfrKpis>;
 }

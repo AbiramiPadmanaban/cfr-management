@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@/app/generated/prisma";
 
 const connectionString = process.env.DATABASE_URL || "";
 const dbUrl = new URL(connectionString);
@@ -46,6 +46,8 @@ async function main() {
       projectName: "Project Alpha",
       projectNumber: "PRJ-ENG-001",
       clientName: "Client Acme Corp",
+      projectStartDate: new Date("2026-01-15"),
+      projectEndDate: new Date("2026-06-30"),
     },
   });
   const beta = await prisma.project.create({
@@ -54,6 +56,8 @@ async function main() {
       projectName: "Project Beta",
       projectNumber: "PRJ-ENG-002",
       clientName: "Client Stark Industries",
+      projectStartDate: new Date("2026-02-01"),
+      projectEndDate: new Date("2026-10-15"),
     },
   });
   const gamma = await prisma.project.create({
@@ -62,6 +66,8 @@ async function main() {
       projectName: "Project Gamma",
       projectNumber: "PRJ-FIN-001",
       clientName: "Client Wayne Enterprises",
+      projectStartDate: new Date("2026-01-01"),
+      projectEndDate: new Date("2026-08-31"),
     },
   });
   const delta = await prisma.project.create({
@@ -70,6 +76,8 @@ async function main() {
       projectName: "Project Delta",
       projectNumber: "PRJ-FIN-002",
       clientName: "Client LexCorp",
+      projectStartDate: new Date("2026-03-01"),
+      projectEndDate: new Date("2026-12-15"),
     },
   });
   const epsilon = await prisma.project.create({
@@ -78,6 +86,8 @@ async function main() {
       projectName: "Project Epsilon",
       projectNumber: "PRJ-TEC-001",
       clientName: "Client Stark Enterprises",
+      projectStartDate: new Date("2026-04-15"),
+      projectEndDate: new Date("2026-11-30"),
     },
   });
   const zeta = await prisma.project.create({
@@ -86,6 +96,8 @@ async function main() {
       projectName: "Project Zeta",
       projectNumber: "PRJ-TEC-002",
       clientName: "Client Cyberdyne",
+      projectStartDate: new Date("2026-05-01"),
+      projectEndDate: new Date("2026-12-31"),
     },
   });
 
@@ -103,6 +115,8 @@ async function main() {
       overallSatisfaction: 5,
       comments: "Exceptional delivery, quality of work is outstanding.",
       status: "SUBMITTED" as const,
+      client: alpha.clientName,
+      projectNumber: alpha.projectNumber,
     },
     {
       projectId: beta.id,
@@ -114,6 +128,8 @@ async function main() {
       overallSatisfaction: 4,
       comments: "Good execution but delivery was slightly delayed.",
       status: "DRAFT" as const,
+      client: beta.clientName,
+      projectNumber: beta.projectNumber,
     },
     {
       projectId: gamma.id,
@@ -125,6 +141,8 @@ async function main() {
       overallSatisfaction: 3,
       comments: "Average performance, communication can be improved.",
       status: "SUBMITTED" as const,
+      client: gamma.clientName,
+      projectNumber: gamma.projectNumber,
     },
     {
       projectId: delta.id,
@@ -136,6 +154,8 @@ async function main() {
       overallSatisfaction: 5,
       comments: "Perfect execution, stellar team communication.",
       status: "SUBMITTED" as const,
+      client: delta.clientName,
+      projectNumber: delta.projectNumber,
     },
     {
       projectId: epsilon.id,
@@ -147,6 +167,8 @@ async function main() {
       overallSatisfaction: 2,
       comments: "Struggling with technical competence, needs immediate course correction.",
       status: "DRAFT" as const,
+      client: epsilon.clientName,
+      projectNumber: epsilon.projectNumber,
     },
   ];
 

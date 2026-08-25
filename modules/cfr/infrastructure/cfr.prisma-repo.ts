@@ -4,7 +4,6 @@ import type {
   CfrWithProject,
   CfrFilterInput,
   CfrCreateInput,
-  CfrUpdateInput,
   CfrKpis,
 } from "../domain/cfr.repository";
 import type { Department, Project, Cfr, Prisma } from "@/app/generated/prisma";
@@ -25,7 +24,11 @@ export class PrismaCfrRepository implements CfrRepository {
     });
   }
 
-  async getCfrs(filters?: CfrFilterInput): Promise<CfrWithProject[]> {
+  async getCfrs(
+    filters?: CfrFilterInput,
+    page?: number,
+    limit?: number
+  ): Promise<{ cfrs: CfrWithProject[]; totalCount: number }> {
     const where: Prisma.CfrWhereInput = {};
 
     if (filters) {
@@ -58,18 +61,24 @@ export class PrismaCfrRepository implements CfrRepository {
             },
           },
           {
-            project: {
-              clientName: {
-                contains: trimmedSearch,
-                mode: "insensitive" as const,
-              },
+            client: {
+              contains: trimmedSearch,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            projectNumber: {
+              contains: trimmedSearch,
+              mode: "insensitive" as const,
             },
           },
         ];
       }
     }
 
-    return prisma.cfr.findMany({
+    const totalCount = await prisma.cfr.count({ where });
+
+    const queryOptions: Prisma.CfrFindManyArgs = {
       where,
       include: {
         project: {
@@ -81,7 +90,16 @@ export class PrismaCfrRepository implements CfrRepository {
       orderBy: {
         createdAt: "desc",
       },
-    }) as Promise<CfrWithProject[]>;
+    };
+
+    if (page !== undefined && limit !== undefined) {
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const cfrs = (await prisma.cfr.findMany(queryOptions)) as CfrWithProject[];
+
+    return { cfrs, totalCount };
   }
 
   async getCfrById(id: number): Promise<CfrWithProject | null> {
@@ -98,9 +116,41 @@ export class PrismaCfrRepository implements CfrRepository {
   }
 
   async createCfr(data: CfrCreateInput): Promise<Cfr> {
+    let resolvedProjectId = data.projectId;
+
+    if (!resolvedProjectId) {
+      // Find project by department and projectName (case-insensitive)
+      const existingProject = await prisma.project.findFirst({
+        where: {
+          departmentId: data.departmentId,
+          projectName: {
+            equals: data.projectName,
+            mode: "insensitive",
+          },
+        },
+      });
+
+      if (existingProject) {
+        resolvedProjectId = existingProject.id;
+      } else {
+        // Create new project
+        const newProject = await prisma.project.create({
+          data: {
+            departmentId: data.departmentId,
+            projectName: data.projectName,
+            projectNumber: data.projectNumber,
+            clientName: data.client,
+            projectStartDate: data.projectStartDate,
+            projectEndDate: data.projectEndDate,
+          },
+        });
+        resolvedProjectId = newProject.id;
+      }
+    }
+
     return prisma.cfr.create({
       data: {
-        projectId: data.projectId,
+        projectId: resolvedProjectId,
         reviewPeriod: data.reviewPeriod,
         qualityRating: data.qualityRating,
         deliveryRating: data.deliveryRating,
@@ -109,30 +159,9 @@ export class PrismaCfrRepository implements CfrRepository {
         overallSatisfaction: data.overallSatisfaction,
         comments: data.comments,
         status: data.status,
+        client: data.client,
+        projectNumber: data.projectNumber,
       },
-    });
-  }
-
-  async updateCfr(id: number, data: CfrUpdateInput): Promise<Cfr> {
-    return prisma.cfr.update({
-      where: { id },
-      data: {
-        projectId: data.projectId,
-        reviewPeriod: data.reviewPeriod,
-        qualityRating: data.qualityRating,
-        deliveryRating: data.deliveryRating,
-        communicationRating: data.communicationRating,
-        technicalCompetence: data.technicalCompetence,
-        overallSatisfaction: data.overallSatisfaction,
-        comments: data.comments,
-        status: data.status,
-      },
-    });
-  }
-
-  async deleteCfr(id: number): Promise<Cfr> {
-    return prisma.cfr.delete({
-      where: { id },
     });
   }
 

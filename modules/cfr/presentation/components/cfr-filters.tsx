@@ -30,31 +30,31 @@ export function CfrFilters({
   const projects = activeDepartment ? activeDepartment.projects : [];
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5 items-end">
-        {/* Search */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider dark:text-zinc-400">
-            Search
-          </label>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[200px]">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="ID, project or client name..."
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-700"
+            placeholder="Search by CFR ID, project or client"
+            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
           />
         </div>
 
-        {/* Department */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider dark:text-zinc-400">
-            Department
-          </label>
+        {/* Department Select */}
+        <div className="relative w-full sm:w-48">
           <select
             value={selectedDepartmentId}
             onChange={(e) => onDepartmentChange(e.target.value)}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-700"
+            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-800 focus:border-slate-400 focus:outline-none appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 12px center",
+              backgroundSize: "16px",
+            }}
           >
             <option value="">All Departments</option>
             {departments.map((d) => (
@@ -65,16 +65,19 @@ export function CfrFilters({
           </select>
         </div>
 
-        {/* Project */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider dark:text-zinc-400">
-            Project
-          </label>
+        {/* Project Select */}
+        <div className="relative w-full sm:w-48">
           <select
             value={selectedProjectId}
             onChange={(e) => onProjectChange(e.target.value)}
             disabled={!selectedDepartmentId}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:bg-white focus:outline-none disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-700"
+            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-800 focus:border-slate-400 focus:outline-none appearance-none disabled:opacity-50"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 12px center",
+              backgroundSize: "16px",
+            }}
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -85,15 +88,18 @@ export function CfrFilters({
           </select>
         </div>
 
-        {/* Status */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider dark:text-zinc-400">
-            Status
-          </label>
+        {/* Status Select */}
+        <div className="relative w-full sm:w-44">
           <select
             value={selectedStatus}
             onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-700"
+            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-800 focus:border-slate-400 focus:outline-none appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 12px center",
+              backgroundSize: "16px",
+            }}
           >
             <option value="">All Statuses</option>
             <option value="DRAFT">Draft</option>
@@ -102,13 +108,13 @@ export function CfrFilters({
           </select>
         </div>
 
-        {/* Clear Filters Button */}
+        {/* Reset Filters Button */}
         <button
           type="button"
           onClick={onClearFilters}
-          className="flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-850"
+          className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none"
         >
-          Clear Filters
+          Reset Filters
         </button>
       </div>
     </div>

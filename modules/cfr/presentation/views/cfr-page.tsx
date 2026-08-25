@@ -2,49 +2,44 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import type { Department, Project, CfrStatus } from "@/app/generated/prisma";
-import type { CfrWithProject, CfrKpis, CfrCreateInput } from "../../domain/cfr.repository";
+import Link from "next/link";
+import type { Department, Project } from "@/app/generated/prisma";
+import type { CfrWithProject } from "../../domain/cfr.repository";
 
 // Presentation Components
-import { CfrKpiCards } from "../components/cfr-kpi-cards";
 import { CfrFilters } from "../components/cfr-filters";
 import { CfrTable } from "../components/cfr-table";
-import { CfrForm } from "../components/cfr-form";
 import { CfrViewDialog } from "../components/cfr-view-dialog";
-import { CfrDeleteDialog } from "../components/cfr-delete-dialog";
-
-// Actions
-import {
-  createCfrAction,
-  updateCfrAction,
-  deleteCfrAction,
-} from "../server-actions/cfr-actions";
 
 export interface CfrPageViewProps {
   departments: (Department & { projects: Project[] })[];
   cfrs: CfrWithProject[];
-  kpis: CfrKpis;
+  totalCount: number;
+  currentPage: number;
+  limit: number;
 }
 
-export function CfrPageView({ departments, cfrs, kpis }: CfrPageViewProps) {
+export function CfrPageView({
+  departments,
+  cfrs,
+  totalCount,
+  currentPage,
+  limit,
+}: CfrPageViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Dialog/modal states
-  const [activeModal, setActiveModal] = useState<null | "create" | "edit" | "view" | "delete">(null);
+  // Selected CFR for read-only view dialog
   const [selectedCfr, setSelectedCfr] = useState<CfrWithProject | null>(null);
 
-  // Notification feedback state
-  const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  // Read search parameters from URL
+  // Search parameters
   const selectedDepartmentId = searchParams.get("departmentId") || "";
   const selectedProjectId = searchParams.get("projectId") || "";
   const selectedStatus = searchParams.get("status") || "";
   const searchQuery = searchParams.get("search") || "";
 
-  // Local search input state (for debouncing)
+  // Local search text for debouncing
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   useEffect(() => {
@@ -55,7 +50,7 @@ export function CfrPageView({ departments, cfrs, kpis }: CfrPageViewProps) {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (localSearch !== searchQuery) {
-        updateFilters({ search: localSearch });
+        updateFilters({ search: localSearch, page: "1" }); // Reset to page 1 on new search
       }
     }, 400);
 
@@ -74,68 +69,18 @@ export function CfrPageView({ departments, cfrs, kpis }: CfrPageViewProps) {
       }
     });
 
-    // Reset project if department changes
+    // Reset project and page if department changes
     if ("departmentId" in updates) {
       params.delete("projectId");
+      params.set("page", "1");
+    }
+
+    // Reset page if project or status changes
+    if ("projectId" in updates || "status" in updates) {
+      params.set("page", "1");
     }
 
     router.push(`${pathname}?${params.toString()}`);
-  };
-
-  // Show a notification banner that auto-dismisses
-  const showNotification = (message: string, type: "success" | "error" = "success") => {
-    setNotification({ message, type });
-    setTimeout(() => {
-      setNotification(null);
-    }, 3000);
-  };
-
-  // Modal actions
-  const openCreateModal = () => {
-    setSelectedCfr(null);
-    setActiveModal("create");
-  };
-
-  const openViewModal = (cfr: CfrWithProject) => {
-    setSelectedCfr(cfr);
-    setActiveModal("view");
-  };
-
-  const openEditModal = (cfr: CfrWithProject) => {
-    setSelectedCfr(cfr);
-    setActiveModal("edit");
-  };
-
-  const openDeleteModal = (id: number) => {
-    const cfr = cfrs.find((c) => c.id === id) || null;
-    setSelectedCfr(cfr);
-    setActiveModal("delete");
-  };
-
-  const closeModal = () => {
-    setActiveModal(null);
-    setSelectedCfr(null);
-  };
-
-  // Save (Create/Update) handler
-  const handleSave = async (data: CfrCreateInput) => {
-    if (activeModal === "create") {
-      await createCfrAction(data);
-      showNotification("CFR created successfully!");
-    } else if (activeModal === "edit" && selectedCfr) {
-      await updateCfrAction(selectedCfr.id, data);
-      showNotification("CFR updated successfully!");
-    }
-    closeModal();
-  };
-
-  // Delete handler
-  const handleDelete = async () => {
-    if (selectedCfr) {
-      await deleteCfrAction(selectedCfr.id);
-      showNotification("CFR deleted successfully!");
-    }
-    closeModal();
   };
 
   // Clear all filters
@@ -144,125 +89,153 @@ export function CfrPageView({ departments, cfrs, kpis }: CfrPageViewProps) {
     router.push(pathname);
   };
 
+  // Pagination index calculations
+  const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const endIdx = Math.min(currentPage * limit, totalCount);
+  const totalPages = Math.ceil(totalCount / limit);
+  const hasPrev = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  // Generate page numbers array
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
   return (
-    <div className="flex-1 bg-zinc-50/50 p-6 dark:bg-zinc-900/10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        
-        {/* Toast Notification Banner */}
-        {notification && (
-          <div className={`fixed top-5 right-5 z-55 flex items-center gap-2 rounded-xl border p-4 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 ${
-            notification.type === "success" 
-              ? "bg-green-50 text-green-800 border-green-200 dark:bg-green-950/90 dark:text-green-300 dark:border-green-850" 
-              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/90 dark:text-red-300 dark:border-red-850"
-          }`}>
-            <span className="text-sm font-semibold">{notification.message}</span>
-          </div>
-        )}
-
-        {/* Header Section */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-5 dark:border-zinc-800">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Customer Feedback Review
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Manage and track project satisfaction feedback reviews from clients.
-            </p>
-          </div>
-          <div>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800 focus:outline-none dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              + Create CFR
-            </button>
-          </div>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Page Header (Matching Ticket Header with count badge and create button) */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2.5xl font-black text-slate-900 tracking-tight">All CFRs</h1>
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#185adb] px-1.5 text-xs font-black text-white">
+            {totalCount}
+          </span>
         </div>
+        <Link
+          href="/cfr/create"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#1a3574] px-5 text-sm font-bold text-white hover:bg-[#152e66] shadow-sm transition-colors"
+        >
+          Create CFR
+        </Link>
+      </div>
 
-        {/* KPI Scorecard Cards */}
-        <CfrKpiCards kpis={kpis} />
+      {/* 1. Filters Card wrapper */}
+      <CfrFilters
+        departments={departments}
+        selectedDepartmentId={selectedDepartmentId}
+        selectedProjectId={selectedProjectId}
+        selectedStatus={selectedStatus}
+        searchQuery={localSearch}
+        onDepartmentChange={(id) => updateFilters({ departmentId: id })}
+        onProjectChange={(id) => updateFilters({ projectId: id })}
+        onStatusChange={(status) => updateFilters({ status })}
+        onSearchChange={setLocalSearch}
+        onClearFilters={handleClearFilters}
+      />
 
-        {/* Search and Filters Section */}
-        <CfrFilters
-          departments={departments}
-          selectedDepartmentId={selectedDepartmentId}
-          selectedProjectId={selectedProjectId}
-          selectedStatus={selectedStatus}
-          searchQuery={localSearch}
-          onDepartmentChange={(id) => updateFilters({ departmentId: id })}
-          onProjectChange={(id) => updateFilters({ projectId: id })}
-          onStatusChange={(status) => updateFilters({ status })}
-          onSearchChange={setLocalSearch}
-          onClearFilters={handleClearFilters}
-        />
+      {/* 2. Table & Pagination Card */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        {/* Table list */}
+        <CfrTable cfrs={cfrs} onView={setSelectedCfr} />
 
-        {/* Data Table */}
-        <CfrTable
-          cfrs={cfrs}
-          onView={openViewModal}
-          onEdit={openEditModal}
-          onDelete={openDeleteModal}
-        />
+        {/* Pagination Footer */}
+        {totalCount > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-4">
+            {/* Range indicator text */}
+            <div className="text-sm font-semibold text-slate-400">
+              Showing {startIdx}–{endIdx} of {totalCount} CFRs
+            </div>
 
-        {/* Custom Overlay Dialog Modal */}
-        {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm">
-            <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950 animate-in zoom-in-95 duration-150">
-              
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-zinc-150 dark:border-zinc-850">
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                  {activeModal === "create" && "Create Customer Feedback Review"}
-                  {activeModal === "edit" && "Edit Customer Feedback Review"}
-                  {activeModal === "view" && "CFR Detailed Scorecard"}
-                  {activeModal === "delete" && "Confirm Deletion"}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200"
+            {/* Pagination Controls (Matching SolidPro style) */}
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              {/* Limit display selector */}
+              <div className="relative">
+                <select
+                  value={limit}
+                  disabled
+                  className="h-9 rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-xs font-bold text-slate-700 outline-none appearance-none"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 8px center",
+                    backgroundSize: "12px",
+                  }}
                 >
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
+                  <option value={limit}>{limit}</option>
+                </select>
               </div>
 
-              {/* Modal Content Scrollable Area */}
-              <div className="mt-4 max-h-[75vh] overflow-y-auto pr-1">
-                {activeModal === "create" && (
-                  <CfrForm
-                    departments={departments}
-                    onSave={handleSave}
-                    onCancel={closeModal}
-                  />
-                )}
-                {activeModal === "edit" && selectedCfr && (
-                  <CfrForm
-                    departments={departments}
-                    cfr={selectedCfr}
-                    onSave={handleSave}
-                    onCancel={closeModal}
-                  />
-                )}
-                {activeModal === "view" && selectedCfr && (
-                  <CfrViewDialog cfr={selectedCfr} onClose={closeModal} />
-                )}
-                {activeModal === "delete" && selectedCfr && (
-                  <CfrDeleteDialog
-                    id={selectedCfr.id}
-                    onConfirm={handleDelete}
-                    onCancel={closeModal}
-                  />
-                )}
+              {/* Prev / Pages / Next */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={!hasPrev}
+                  onClick={() => updateFilters({ page: String(currentPage - 1) })}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+
+                {pageNumbers.map((num) => {
+                  const isCurrent = num === currentPage;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => updateFilters({ page: String(num) })}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                        isCurrent
+                          ? "bg-[#1a3574] text-white shadow-md shadow-[#1a3574]/20"
+                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  disabled={!hasNext}
+                  onClick={() => updateFilters({ page: String(currentPage + 1) })}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Next
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* CFR Details Scorecard Overlay Dialog Modal */}
+      {selectedCfr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">
+                CFR Detailed Scorecard
+              </h3>
+              <button
+                onClick={() => setSelectedCfr(null)}
+                className="text-slate-400 hover:text-slate-650"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="mt-4 max-h-[75vh] overflow-y-auto pr-1">
+              <CfrViewDialog cfr={selectedCfr} onClose={() => setSelectedCfr(null)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../app/generated/prisma"
 }
 
@@ -14,43 +11,47 @@ model Department {
   id        String    @id @default(uuid())
   name      String    @unique
   code      String    @unique
-  projects  Project[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  projects  Project[]
 }
 
 model Project {
-  id            String     @id @default(uuid())
-  departmentId  String
-  department    Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  projectName   String
-  projectNumber String
-  clientName    String
-  cfrs          Cfr[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id               String     @id @default(uuid())
+  departmentId     String
+  projectName      String
+  projectNumber    String
+  clientName       String
+  projectStartDate DateTime
+  projectEndDate   DateTime
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  cfrs             Cfr[]
+  department       Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@unique([departmentId, projectName])
+}
+
+model Cfr {
+  id                  Int       @id @default(autoincrement())
+  projectId           String
+  reviewPeriod        String
+  qualityRating       Float
+  deliveryRating      Float
+  communicationRating Float
+  technicalCompetence Float
+  overallSatisfaction Float
+  comments            String?
+  status              CfrStatus @default(DRAFT)
+  client              String
+  projectNumber       String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 enum CfrStatus {
   DRAFT
   SENT
   SUBMITTED
-}
-
-model Cfr {
-  id                  Int       @id @default(autoincrement())
-  projectId           String
-  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reviewPeriod        String
-  qualityRating       Int
-  deliveryRating      Int
-  communicationRating Int
-  technicalCompetence Int
-  overallSatisfaction Int
-  comments            String?
-  status              CfrStatus @default(DRAFT)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
 }
