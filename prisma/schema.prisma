@@ -33,21 +33,33 @@ model Project {
 }
 
 model Cfr {
-  id                  Int       @id @default(autoincrement())
-  projectId           String
-  reviewPeriod        String
-  qualityRating       Float
-  deliveryRating      Float
-  communicationRating Float
-  technicalCompetence Float
-  overallSatisfaction Float
-  comments            String?
-  status              CfrStatus @default(DRAFT)
-  client              String
-  projectNumber       String
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                    Int       @id @default(autoincrement())
+  projectId             String
+  reviewPeriod          String
+  qualityRating                Float?
+  deliveryRating               Float?
+  communicationRating          Float?
+  technicalCompetence          Float?
+  overallSatisfaction          Float?
+  qualityRemarks               String?
+  deliveryRemarks              String?
+  communicationRemarks         String?
+  technicalCompetenceRemarks   String?
+  overallSatisfactionRemarks   String?
+  comments                     String?
+  reviewedBy                   String?
+  reviewedAt                   DateTime?
+  actionNeeded                 Boolean?
+  status                CfrStatus @default(DRAFT)
+  client                String
+  projectNumber         String
+  clientEmail           String
+  feedbackToken         String?   @unique
+  feedbackSentAt        DateTime?
+  feedbackSubmittedAt   DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 enum CfrStatus {

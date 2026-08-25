@@ -212,7 +212,7 @@ export function CfrPageView({
       {/* CFR Details Scorecard Overlay Dialog Modal */}
       {selectedCfr && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">
                 CFR Detailed Scorecard
@@ -230,8 +230,8 @@ export function CfrPageView({
                 </svg>
               </button>
             </div>
-            <div className="mt-4 max-h-[75vh] overflow-y-auto pr-1">
-              <CfrViewDialog cfr={selectedCfr} onClose={() => setSelectedCfr(null)} />
+            <div className="mt-4 flex-1 overflow-y-auto pr-1">
+              <CfrViewDialog cfr={selectedCfr} />
             </div>
           </div>
         </div>

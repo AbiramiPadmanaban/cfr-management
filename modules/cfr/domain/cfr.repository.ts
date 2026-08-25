@@ -20,15 +20,74 @@ export interface CfrCreateInput {
   projectStartDate: Date;
   projectEndDate: Date;
   reviewPeriod: string;
+  qualityRating?: number | null;
+  deliveryRating?: number | null;
+  communicationRating?: number | null;
+  technicalCompetence?: number | null;
+  overallSatisfaction?: number | null;
+  qualityRemarks?: string | null;
+  deliveryRemarks?: string | null;
+  communicationRemarks?: string | null;
+  technicalCompetenceRemarks?: string | null;
+  overallSatisfactionRemarks?: string | null;
+  comments?: string | null;
+  status?: CfrStatus;
+  client: string;
+  projectNumber: string;
+  clientEmail: string;
+}
+
+export interface CfrFeedbackSubmitInput {
   qualityRating: number;
   deliveryRating: number;
   communicationRating: number;
   technicalCompetence: number;
   overallSatisfaction: number;
+  qualityRemarks?: string | null;
+  deliveryRemarks?: string | null;
+  communicationRemarks?: string | null;
+  technicalCompetenceRemarks?: string | null;
+  overallSatisfactionRemarks?: string | null;
   comments?: string | null;
-  status?: CfrStatus;
-  client: string;
+  reviewedBy: string;
+  reviewedAt: Date;
+}
+
+export interface CfrPublicFeedback {
+  projectName: string;
   projectNumber: string;
+  client: string;
+  departmentName: string;
+  reviewPeriod: string;
+  projectStartDate: Date;
+  projectEndDate: Date;
+  status: CfrStatus;
+  submitted: boolean;
+  expired: boolean;
+  expiresAt: Date | null;
+}
+
+export const FEEDBACK_LINK_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function getFeedbackExpiryDate(sentAt: Date | null | undefined): Date | null {
+  if (!sentAt) {
+    return null;
+  }
+  return new Date(new Date(sentAt).getTime() + FEEDBACK_LINK_TTL_MS);
+}
+
+export function isFeedbackLinkExpired(
+  sentAt: Date | null | undefined,
+  status: CfrStatus
+): boolean {
+  if (status === "SUBMITTED") {
+    return false;
+  }
+  const expiresAt = getFeedbackExpiryDate(sentAt);
+  if (!expiresAt) {
+    return true;
+  }
+  return Date.now() > expiresAt.getTime();
 }
 
 export interface CfrKpis {
@@ -46,6 +105,10 @@ export interface CfrRepository {
     limit?: number
   ): Promise<{ cfrs: CfrWithProject[]; totalCount: number }>;
   getCfrById(id: number): Promise<CfrWithProject | null>;
+  getCfrByFeedbackToken(token: string): Promise<CfrWithProject | null>;
   createCfr(data: CfrCreateInput): Promise<Cfr>;
+  submitFeedback(token: string, data: CfrFeedbackSubmitInput): Promise<CfrWithProject>;
+  setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject>;
+  deleteCfr(id: number): Promise<void>;
   getKpis(): Promise<CfrKpis>;
 }

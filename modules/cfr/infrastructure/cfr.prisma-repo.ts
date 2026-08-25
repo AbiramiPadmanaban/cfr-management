@@ -1,11 +1,14 @@
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type {
   CfrRepository,
   CfrWithProject,
   CfrFilterInput,
   CfrCreateInput,
+  CfrFeedbackSubmitInput,
   CfrKpis,
 } from "../domain/cfr.repository";
+import { isFeedbackLinkExpired } from "../domain/cfr.repository";
 import type { Department, Project, Cfr, Prisma } from "@/app/generated/prisma";
 
 export class PrismaCfrRepository implements CfrRepository {
@@ -148,21 +151,127 @@ export class PrismaCfrRepository implements CfrRepository {
       }
     }
 
+    const isClientCompleted = data.status === "SUBMITTED";
+
     return prisma.cfr.create({
       data: {
         projectId: resolvedProjectId,
         reviewPeriod: data.reviewPeriod,
+        qualityRating: isClientCompleted ? data.qualityRating : null,
+        deliveryRating: isClientCompleted ? data.deliveryRating : null,
+        communicationRating: isClientCompleted ? data.communicationRating : null,
+        technicalCompetence: isClientCompleted ? data.technicalCompetence : null,
+        overallSatisfaction: isClientCompleted ? data.overallSatisfaction : null,
+        qualityRemarks: isClientCompleted ? data.qualityRemarks : null,
+        deliveryRemarks: isClientCompleted ? data.deliveryRemarks : null,
+        communicationRemarks: isClientCompleted ? data.communicationRemarks : null,
+        technicalCompetenceRemarks: isClientCompleted ? data.technicalCompetenceRemarks : null,
+        overallSatisfactionRemarks: isClientCompleted ? data.overallSatisfactionRemarks : null,
+        comments: isClientCompleted ? data.comments : null,
+        status: data.status,
+        client: data.client,
+        projectNumber: data.projectNumber,
+        clientEmail: data.clientEmail,
+        feedbackToken: data.status === "SENT" ? randomBytes(32).toString("hex") : null,
+        feedbackSentAt: data.status === "SENT" ? new Date() : null,
+      },
+    });
+  }
+
+  async getCfrByFeedbackToken(token: string): Promise<CfrWithProject | null> {
+    return prisma.cfr.findUnique({
+      where: { feedbackToken: token },
+      include: {
+        project: {
+          include: {
+            department: true,
+          },
+        },
+      },
+    }) as Promise<CfrWithProject | null>;
+  }
+
+  async submitFeedback(
+    token: string,
+    data: CfrFeedbackSubmitInput
+  ): Promise<CfrWithProject> {
+    const existing = await this.getCfrByFeedbackToken(token);
+
+    if (!existing) {
+      throw new Error("Invalid or expired feedback link");
+    }
+
+    if (existing.status === "SUBMITTED") {
+      throw new Error("Feedback has already been submitted");
+    }
+
+    if (existing.status !== "SENT") {
+      throw new Error("This feedback request is not open for submission");
+    }
+
+    if (isFeedbackLinkExpired(existing.feedbackSentAt, existing.status)) {
+      throw new Error("This feedback link has expired. Please ask your project lead to send a new request.");
+    }
+
+    const updated = await prisma.cfr.updateMany({
+      where: {
+        feedbackToken: token,
+        status: "SENT",
+      },
+      data: {
         qualityRating: data.qualityRating,
         deliveryRating: data.deliveryRating,
         communicationRating: data.communicationRating,
         technicalCompetence: data.technicalCompetence,
         overallSatisfaction: data.overallSatisfaction,
+        qualityRemarks: data.qualityRemarks,
+        deliveryRemarks: data.deliveryRemarks,
+        communicationRemarks: data.communicationRemarks,
+        technicalCompetenceRemarks: data.technicalCompetenceRemarks,
+        overallSatisfactionRemarks: data.overallSatisfactionRemarks,
         comments: data.comments,
-        status: data.status,
-        client: data.client,
-        projectNumber: data.projectNumber,
+        reviewedBy: data.reviewedBy,
+        reviewedAt: data.reviewedAt,
+        status: "SUBMITTED",
+        feedbackSubmittedAt: new Date(),
       },
     });
+
+    if (updated.count === 0) {
+      throw new Error("Feedback has already been submitted");
+    }
+
+    const submitted = await this.getCfrByFeedbackToken(token);
+    if (!submitted) {
+      throw new Error("Failed to load submitted feedback");
+    }
+
+    return submitted;
+  }
+
+  async setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject> {
+    const existing = await this.getCfrById(id);
+    if (!existing) {
+      throw new Error("CFR not found");
+    }
+    if (existing.status !== "SUBMITTED") {
+      throw new Error("Action needed can be set only after the client review is received");
+    }
+
+    await prisma.cfr.update({
+      where: { id },
+      data: { actionNeeded },
+    });
+
+    const updated = await this.getCfrById(id);
+    if (!updated) {
+      throw new Error("Failed to update action needed");
+    }
+    return updated;
+  }
+
+  async deleteCfr(id: number): Promise<void> {
+    await prisma.cfr.delete({ where: { id } });
   }
 
   async getKpis(): Promise<CfrKpis> {

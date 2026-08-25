@@ -5,3 +5,8 @@ export { CfrViewDialog } from "./components/cfr-view-dialog";
 export { CfrPageView } from "./views/cfr-page";
 export { CfrDashboardView } from "./views/cfr-dashboard-view";
 export { CfrCreateView } from "./views/cfr-create-view";
+export {
+  CfrPublicFeedbackView,
+  CfrInvalidFeedbackView,
+  CfrExpiredFeedbackView,
+} from "./views/cfr-public-feedback-view";

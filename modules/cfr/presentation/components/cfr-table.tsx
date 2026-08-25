@@ -1,4 +1,5 @@
 import type { CfrWithProject } from "../../domain/cfr.repository";
+import { CfrActionNeededMarks, formatCfrDate } from "./cfr-action-needed";
 
 export interface CfrTableProps {
   cfrs: CfrWithProject[];
@@ -31,7 +32,7 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] border-collapse text-left text-sm text-slate-600">
+      <table className="w-full min-w-[1100px] border-collapse text-left text-sm text-slate-600">
         <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
           <tr>
             <th className="px-5 py-3.5">#</th>
@@ -42,7 +43,10 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
             <th className="px-5 py-3.5">CFR Date</th>
             <th className="px-5 py-3.5">Overall Rating</th>
             <th className="px-5 py-3.5">Status</th>
-            <th className="px-5 py-3.5 text-right">Actions</th>
+            <th className="px-5 py-3.5">Date Received</th>
+            <th className="px-5 py-3.5">By</th>
+            <th className="px-5 py-3.5">Action Needed</th>
+            <th className="px-5 py-3.5 text-right">View</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -88,16 +92,33 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
                   {createdDate}
                 </td>
                 {/* Overall Rating */}
-                <td className="px-5 py-4 font-bold text-slate-900">
-                  {cfr.overallSatisfaction} / 5
-                </td>
+                    <td className="px-5 py-4 font-bold text-slate-900">
+                      {cfr.overallSatisfaction != null
+                        ? `${cfr.overallSatisfaction} / 5`
+                        : "Pending"}
+                    </td>
                 {/* Status Badge */}
                 <td className="px-5 py-4">
                   <span className={getStatusBadgeClass(cfr.status)}>
                     {cfr.status}
                   </span>
                 </td>
-                {/* Actions (View icon ONLY) */}
+                <td className="px-5 py-4 text-slate-500 font-medium">
+                  {cfr.status === "SUBMITTED"
+                    ? formatCfrDate(cfr.feedbackSubmittedAt)
+                    : "—"}
+                </td>
+                <td className="px-5 py-4 text-slate-700">
+                  {cfr.status === "SUBMITTED" ? cfr.reviewedBy || "—" : "—"}
+                </td>
+                <td className="px-5 py-4">
+                  <CfrActionNeededMarks
+                    cfrId={cfr.id}
+                    received={cfr.status === "SUBMITTED"}
+                    actionNeeded={cfr.actionNeeded}
+                  />
+                </td>
+                {/* View */}
                 <td className="px-5 py-4 text-right">
                   <button
                     type="button"
