@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 import { PrismaCfrRepository } from "../../infrastructure/cfr.prisma-repo";
 import { buildFeedbackUrl, sendClientFeedbackEmail } from "@/lib/email";
+import { requireAuth } from "@/server/auth/require-auth";
 import {
   getFeedbackExpiryDate,
   isFeedbackLinkExpired,
@@ -13,6 +15,12 @@ import {
 import { joinCfrRemarks } from "../components/cfr-rating-criteria";
 
 const cfrRepo = new PrismaCfrRepository();
+
+function rethrowNavigationErrors(error: unknown): void {
+  if (isRedirectError(error)) {
+    throw error;
+  }
+}
 
 const ratingSchema = z.number().int().min(1).max(5);
 const optionalRatingSchema = ratingSchema.nullable().optional();
@@ -123,8 +131,10 @@ function toPublicFeedback(cfr: {
 
 export async function getDepartmentsAction() {
   try {
+    await requireAuth();
     return await cfrRepo.getDepartments();
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch departments:", error);
     throw new Error("Failed to fetch departments");
   }
@@ -132,8 +142,10 @@ export async function getDepartmentsAction() {
 
 export async function getCfrsAction(filters?: CfrFilterInput, page?: number, limit?: number) {
   try {
+    await requireAuth();
     return await cfrRepo.getCfrs(filters, page, limit);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch CFRs:", error);
     throw new Error("Failed to fetch CFRs");
   }
@@ -141,8 +153,10 @@ export async function getCfrsAction(filters?: CfrFilterInput, page?: number, lim
 
 export async function getKpisAction() {
   try {
+    await requireAuth();
     return await cfrRepo.getKpis();
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch KPIs:", error);
     throw new Error("Failed to fetch KPIs");
   }
@@ -150,8 +164,10 @@ export async function getKpisAction() {
 
 export async function getDashboardOverviewAction() {
   try {
+    await requireAuth();
     return await cfrRepo.getDashboardOverview();
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch dashboard overview:", error);
     throw new Error("Failed to fetch dashboard overview");
   }
@@ -159,6 +175,7 @@ export async function getDashboardOverviewAction() {
 
 export async function createCfrAction(data: Record<string, unknown>) {
   try {
+    await requireAuth();
     const validated = cfrInputSchema.parse(data);
     const result = await cfrRepo.createCfr({
       ...validated,
@@ -196,6 +213,7 @@ export async function createCfrAction(data: Record<string, unknown>) {
     revalidatePath("/cfr/all");
     return { id: result.id, status: result.status };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to create CFR:", error);
     if (error instanceof z.ZodError) {
       throw new Error(error.issues.map((issue) => issue.message).join(", "));
@@ -226,6 +244,7 @@ export async function getPublicFeedbackAction(
 
     return toPublicFeedback(cfr);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to load public feedback:", error);
     return null;
   }
@@ -255,6 +274,7 @@ export async function submitPublicFeedbackAction(data: Record<string, unknown>) 
     revalidatePath(`/feedback/${validated.token}`);
     return toPublicFeedback(result);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to submit feedback:", error);
     if (error instanceof z.ZodError) {
       throw new Error(error.issues.map((issue) => issue.message).join(", "));
@@ -268,11 +288,13 @@ export async function submitPublicFeedbackAction(data: Record<string, unknown>) 
 
 export async function setActionNeededAction(id: number, actionNeeded: boolean) {
   try {
+    await requireAuth();
     const result = await cfrRepo.setActionNeeded(id, actionNeeded);
     revalidatePath("/cfr");
     revalidatePath("/cfr/all");
     return { id: result.id, actionNeeded: result.actionNeeded };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to set action needed:", error);
     if (error instanceof Error) {
       throw error;
@@ -283,12 +305,14 @@ export async function setActionNeededAction(id: number, actionNeeded: boolean) {
 
 export async function getNotificationsAction() {
   try {
+    await requireAuth();
     const [notifications, unreadCount] = await Promise.all([
       cfrRepo.getNotifications(20),
       cfrRepo.getUnreadNotificationCount(),
     ]);
     return { notifications, unreadCount };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch notifications:", error);
     throw new Error("Failed to fetch notifications");
   }
@@ -296,9 +320,11 @@ export async function getNotificationsAction() {
 
 export async function markNotificationReadAction(id: string) {
   try {
+    await requireAuth();
     await cfrRepo.markNotificationRead(id);
     return { ok: true };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to mark notification as read:", error);
     throw new Error("Failed to mark notification as read");
   }
@@ -306,9 +332,11 @@ export async function markNotificationReadAction(id: string) {
 
 export async function markAllNotificationsReadAction() {
   try {
+    await requireAuth();
     await cfrRepo.markAllNotificationsRead();
     return { ok: true };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to mark notifications as read:", error);
     throw new Error("Failed to mark notifications as read");
   }

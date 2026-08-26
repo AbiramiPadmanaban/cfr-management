@@ -8,7 +8,7 @@ export interface ClientFeedbackEmailInput {
   feedbackUrl: string;
 }
 
-function getAppUrl(): string {
+export function getAppUrl(): string {
   const raw =
     process.env.APP_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -112,13 +112,155 @@ export async function sendClientFeedbackEmail(input: ClientFeedbackEmailInput): 
     "This link expires in 24 hours.",
   ].join("\n");
 
+  await sendMail({
+    to: input.to,
+    subject,
+    text,
+    html,
+  });
+}
+
+export interface PasswordSetupEmailInput {
+  to: string;
+  name?: string | null;
+  setupUrl: string;
+}
+
+export interface PasswordResetEmailInput {
+  to: string;
+  name?: string | null;
+  resetUrl: string;
+}
+
+export function buildPasswordSetupUrl(token: string): string {
+  return `${getAppUrl()}/set-password?token=${encodeURIComponent(token)}`;
+}
+
+export function buildPasswordResetUrl(token: string): string {
+  return `${getAppUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+function greetingName(name?: string | null): string {
+  const trimmed = name?.trim();
+  return trimmed || "there";
+}
+
+function buildAuthEmailHtml(input: {
+  eyebrow: string;
+  heading: string;
+  intro: string;
+  buttonLabel: string;
+  buttonUrl: string;
+  expiryNote: string;
+}): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(input.heading)}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7f8fa;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+            <tr>
+              <td style="background-color:#0f766e;padding:24px 32px;">
+                <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.04em;">SOLiDPRO</p>
+                <p style="margin:6px 0 0;color:#ccfbf1;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(input.eyebrow)}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">${escapeHtml(input.heading)}</p>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#52525b;">${escapeHtml(input.intro)}</p>
+                <p style="margin:0 0 16px;text-align:center;">
+                  <a href="${escapeHtml(input.buttonUrl)}" style="display:inline-block;background-color:#0f766e;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;">
+                    ${escapeHtml(input.buttonLabel)}
+                  </a>
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#71717a;text-align:center;">
+                  ${escapeHtml(input.expiryNote)}<br /><br />
+                  If the button does not work, copy and paste this link into your browser:<br />
+                  <a href="${escapeHtml(input.buttonUrl)}" style="color:#0f766e;word-break:break-all;">${escapeHtml(input.buttonUrl)}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px;border-top:1px solid #e4e4e7;background:#f7f8fa;">
+                <p style="margin:0;font-size:11px;color:#a1a1aa;text-align:center;">© 2026 SOLiDPRO. This is an automated message.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`.trim();
+}
+
+export async function sendPasswordSetupEmail(input: PasswordSetupEmailInput): Promise<void> {
+  const name = greetingName(input.name);
+  const subject = "Set up your SOLiDPRO CFR account";
+  const intro = `Hi ${name}, an administrator created a Customer Feedback Report account for you. Use the button below to set your password. This link expires in 48 hours and can be used only once.`;
+  const html = buildAuthEmailHtml({
+    eyebrow: "Customer Feedback Report",
+    heading: "Set your password",
+    intro,
+    buttonLabel: "Set Password",
+    buttonUrl: input.setupUrl,
+    expiryNote: "This link expires in 48 hours.",
+  });
+  const text = [
+    `Hi ${name},`,
+    "",
+    "An administrator created a Customer Feedback Report account for you.",
+    "Set your password using this link:",
+    input.setupUrl,
+    "",
+    "This link expires in 48 hours and can be used only once.",
+  ].join("\n");
+
+  await sendMail({ to: input.to, subject, text, html });
+}
+
+export async function sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<void> {
+  const name = greetingName(input.name);
+  const subject = "Reset your SOLiDPRO CFR password";
+  const intro = `Hi ${name}, we received a request to reset your Customer Feedback Report password. Use the button below to choose a new password. This link expires in 1 hour and can be used only once. If you did not request this, you can ignore this email.`;
+  const html = buildAuthEmailHtml({
+    eyebrow: "Customer Feedback Report",
+    heading: "Reset your password",
+    intro,
+    buttonLabel: "Reset Password",
+    buttonUrl: input.resetUrl,
+    expiryNote: "This link expires in 1 hour.",
+  });
+  const text = [
+    `Hi ${name},`,
+    "",
+    "We received a request to reset your Customer Feedback Report password.",
+    "Choose a new password using this link:",
+    input.resetUrl,
+    "",
+    "This link expires in 1 hour and can be used only once.",
+    "If you did not request this, you can ignore this email.",
+  ].join("\n");
+
+  await sendMail({ to: input.to, subject, text, html });
+}
+
+async function sendMail(input: { to: string; subject: string; text: string; html: string }): Promise<void> {
   const smtpUser = process.env.SMTP_USER || "Abirami.P@Solidpro-es.com";
   const smtpPass = process.env.SMTP_PASS;
   const smtpHost = process.env.SMTP_HOST || "smtp.office365.com";
   const port = Number(process.env.SMTP_PORT || "587");
 
   if (!smtpPass) {
-    throw new Error("SMTP_PASS is not set. Add the Outlook mailbox password in .env to send client emails.");
+    throw new Error("SMTP_PASS is not set. Add the Outlook mailbox password in .env to send emails.");
   }
 
   const transporter = nodemailer.createTransport({
@@ -139,9 +281,9 @@ export async function sendClientFeedbackEmail(input: ClientFeedbackEmailInput): 
     await transporter.sendMail({
       from: process.env.SMTP_FROM || smtpUser,
       to: input.to,
-      subject,
-      text,
-      html,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
     });
   } catch (error) {
     throw new Error(formatSmtpError(error));
