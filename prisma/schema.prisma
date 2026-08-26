@@ -54,16 +54,70 @@ model Cfr {
   client                String
   projectNumber         String
   clientEmail           String
+  sentByEmail           String?
+  documentNo            String?
+  revNo                 String?
+  revDate               DateTime?
   feedbackToken         String?   @unique
   feedbackSentAt        DateTime?
   feedbackSubmittedAt   DateTime?
+  submissionEmailSentAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  notifications         Notification[]
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  cfrId     Int
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  cfr       Cfr       @relation(fields: [cfrId], references: [id], onDelete: Cascade)
 }
 
 enum CfrStatus {
   DRAFT
   SENT
   SUBMITTED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum AuthTokenType {
+  PASSWORD_SETUP
+  PASSWORD_RESET
+}
+
+model User {
+  id             String      @id @default(uuid())
+  email          String      @unique
+  name           String?
+  passwordHash   String?
+  passwordSetAt  DateTime?
+  isActive       Boolean     @default(true)
+  role           UserRole    @default(USER)
+  sessionVersion Int         @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  tokens         AuthToken[]
+}
+
+model AuthToken {
+  id        String        @id @default(uuid())
+  userId    String
+  tokenHash String        @unique
+  type      AuthTokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }

@@ -71,3 +71,32 @@ export function joinCfrRemarks(remarks: {
 
   return parts.length > 0 ? parts.join("\n\n") : null;
 }
+
+export function toWholeRating(rating: number): number {
+  const rounded = Math.round(rating);
+  if (rounded >= 5) return 5;
+  if (rounded <= 1) return 1;
+  return rounded;
+}
+
+export function getCfrAverageRating(cfr: {
+  qualityRating?: number | null;
+  deliveryRating?: number | null;
+  communicationRating?: number | null;
+  technicalCompetence?: number | null;
+  overallSatisfaction?: number | null;
+}): number | null {
+  const ratings = [
+    cfr.qualityRating,
+    cfr.deliveryRating,
+    cfr.communicationRating,
+    cfr.technicalCompetence,
+    cfr.overallSatisfaction,
+  ].filter((rating): rating is number => rating != null);
+
+  if (ratings.length === 0) {
+    return null;
+  }
+
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+}

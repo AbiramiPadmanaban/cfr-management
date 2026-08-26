@@ -11,6 +11,10 @@ export interface CfrFilterInput {
   projectId?: string;
   status?: CfrStatus;
   search?: string;
+  /** Inclusive start date (YYYY-MM-DD) filtered on createdAt */
+  dateFrom?: string;
+  /** Inclusive end date (YYYY-MM-DD) filtered on createdAt */
+  dateTo?: string;
 }
 
 export interface CfrCreateInput {
@@ -35,6 +39,11 @@ export interface CfrCreateInput {
   client: string;
   projectNumber: string;
   clientEmail: string;
+  /** Project lead / sender email — stored when the CFR request is sent to the client. */
+  sentByEmail?: string | null;
+  documentNo?: string | null;
+  revNo?: string | null;
+  revDate?: Date | null;
 }
 
 export interface CfrFeedbackSubmitInput {
@@ -57,8 +66,7 @@ export interface CfrPublicFeedback {
   projectName: string;
   projectNumber: string;
   client: string;
-  departmentName: string;
-  reviewPeriod: string;
+  clientEmail: string;
   projectStartDate: Date;
   projectEndDate: Date;
   status: CfrStatus;
@@ -97,6 +105,43 @@ export interface CfrKpis {
   averageRating: number;
 }
 
+export interface CfrSatisfactionPoint {
+  key: string;
+  label: string;
+  year: number;
+  month?: number;
+  averageRating: number | null;
+}
+
+export interface CfrSatisfactionTrend {
+  availableYears: number[];
+  monthly: CfrSatisfactionPoint[];
+  yearly: CfrSatisfactionPoint[];
+}
+
+export interface CfrDepartmentRating {
+  departmentId: string;
+  departmentName: string;
+  averageRating: number;
+  count: number;
+}
+
+export interface CfrDashboardOverview {
+  kpis: CfrKpis;
+  satisfactionTrend: CfrSatisfactionTrend;
+  departmentRatings: CfrDepartmentRating[];
+  recentFeedback: CfrWithProject[];
+}
+
+export interface CfrNotification {
+  id: string;
+  cfrId: number;
+  title: string;
+  message: string;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
 export interface CfrRepository {
   getDepartments(): Promise<(Department & { projects: Project[] })[]>;
   getCfrs(
@@ -108,7 +153,19 @@ export interface CfrRepository {
   getCfrByFeedbackToken(token: string): Promise<CfrWithProject | null>;
   createCfr(data: CfrCreateInput): Promise<Cfr>;
   submitFeedback(token: string, data: CfrFeedbackSubmitInput): Promise<CfrWithProject>;
+  /**
+   * Atomically claims the submission-report email slot (sets submissionEmailSentAt).
+   * Returns true only for the first successful claim — used to prevent duplicate emails.
+   */
+  claimSubmissionEmailSend(id: number): Promise<boolean>;
+  /** Clears the claim so a failed send can be retried safely. */
+  releaseSubmissionEmailSend(id: number): Promise<void>;
   setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject>;
   deleteCfr(id: number): Promise<void>;
   getKpis(): Promise<CfrKpis>;
+  getDashboardOverview(): Promise<CfrDashboardOverview>;
+  getNotifications(limit?: number): Promise<CfrNotification[]>;
+  getUnreadNotificationCount(): Promise<number>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
 }

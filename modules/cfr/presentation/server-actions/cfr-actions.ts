@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 import { PrismaCfrRepository } from "../../infrastructure/cfr.prisma-repo";
 import { buildFeedbackUrl, sendClientFeedbackEmail } from "@/lib/email";
+import { requireAuth } from "@/server/auth/require-auth";
+import { sendFeedbackSubmissionReportEmail } from "../../application/send-feedback-submission-report";
+import { buildCfrFeedbackPdf } from "../lib/cfr-feedback-pdf";
 import {
   getFeedbackExpiryDate,
   isFeedbackLinkExpired,
@@ -14,7 +18,13 @@ import { joinCfrRemarks } from "../components/cfr-rating-criteria";
 
 const cfrRepo = new PrismaCfrRepository();
 
-const ratingSchema = z.number().min(1).max(5);
+function rethrowNavigationErrors(error: unknown): void {
+  if (isRedirectError(error)) {
+    throw error;
+  }
+}
+
+const ratingSchema = z.number().int().min(1).max(5);
 const optionalRatingSchema = ratingSchema.nullable().optional();
 
 const cfrInputSchema = z
@@ -44,6 +54,28 @@ const cfrInputSchema = z
       .refine((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "A valid client email is required"),
     projectStartDate: z.string().or(z.date()).transform((val) => new Date(val)),
     projectEndDate: z.string().or(z.date()).transform((val) => new Date(val)),
+    documentNo: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((value) => value || null),
+    revNo: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((value) => value || null),
+    revDate: z
+      .union([z.string(), z.date(), z.null()])
+      .optional()
+      .transform((value) => {
+        if (value == null || value === "") {
+          return null;
+        }
+        const date = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }),
   })
   .refine((data) => data.projectEndDate >= data.projectStartDate, {
     message: "Project End Date must be on or after Project Start Date",
@@ -76,22 +108,20 @@ const feedbackSubmitSchema = z.object({
 function toPublicFeedback(cfr: {
   status: "DRAFT" | "SENT" | "SUBMITTED";
   client: string;
+  clientEmail: string;
   projectNumber: string;
-  reviewPeriod: string;
   feedbackSentAt?: Date | null;
   project: {
     projectName: string;
     projectStartDate: Date;
     projectEndDate: Date;
-    department: { name: string };
   };
 }): CfrPublicFeedback {
   return {
     projectName: cfr.project.projectName,
     projectNumber: cfr.projectNumber,
     client: cfr.client,
-    departmentName: cfr.project.department.name,
-    reviewPeriod: cfr.reviewPeriod,
+    clientEmail: cfr.clientEmail,
     projectStartDate: cfr.project.projectStartDate,
     projectEndDate: cfr.project.projectEndDate,
     status: cfr.status,
@@ -103,8 +133,10 @@ function toPublicFeedback(cfr: {
 
 export async function getDepartmentsAction() {
   try {
+    await requireAuth();
     return await cfrRepo.getDepartments();
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch departments:", error);
     throw new Error("Failed to fetch departments");
   }
@@ -112,27 +144,58 @@ export async function getDepartmentsAction() {
 
 export async function getCfrsAction(filters?: CfrFilterInput, page?: number, limit?: number) {
   try {
+    await requireAuth();
     return await cfrRepo.getCfrs(filters, page, limit);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch CFRs:", error);
     throw new Error("Failed to fetch CFRs");
   }
 }
 
+export async function getCfrByIdAction(id: number) {
+  try {
+    await requireAuth();
+    if (!Number.isInteger(id) || id <= 0) {
+      return null;
+    }
+    return await cfrRepo.getCfrById(id);
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to fetch CFR:", error);
+    throw new Error("Failed to fetch CFR");
+  }
+}
+
 export async function getKpisAction() {
   try {
+    await requireAuth();
     return await cfrRepo.getKpis();
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to fetch KPIs:", error);
     throw new Error("Failed to fetch KPIs");
   }
 }
 
+export async function getDashboardOverviewAction() {
+  try {
+    await requireAuth();
+    return await cfrRepo.getDashboardOverview();
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to fetch dashboard overview:", error);
+    throw new Error("Failed to fetch dashboard overview");
+  }
+}
+
 export async function createCfrAction(data: Record<string, unknown>) {
   try {
+    const user = await requireAuth();
     const validated = cfrInputSchema.parse(data);
     const result = await cfrRepo.createCfr({
       ...validated,
+      sentByEmail: validated.status === "SENT" ? user.email : null,
       comments:
         validated.status === "SENT"
           ? null
@@ -152,8 +215,6 @@ export async function createCfrAction(data: Record<string, unknown>) {
           clientName: withProject.client,
           projectName: withProject.project.projectName,
           projectNumber: withProject.projectNumber,
-          departmentName: withProject.project.department.name,
-          reviewPeriod: withProject.reviewPeriod,
           feedbackUrl: buildFeedbackUrl(result.feedbackToken),
         });
       } catch (emailError) {
@@ -166,9 +227,11 @@ export async function createCfrAction(data: Record<string, unknown>) {
     }
 
     revalidatePath("/cfr");
+    revalidatePath("/cfr/create");
     revalidatePath("/cfr/all");
     return { id: result.id, status: result.status };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to create CFR:", error);
     if (error instanceof z.ZodError) {
       throw new Error(error.issues.map((issue) => issue.message).join(", "));
@@ -197,8 +260,23 @@ export async function getPublicFeedbackAction(
       return null;
     }
 
+    // Safe retry: if feedback was saved but the report email never sent, try once more.
+    if (cfr.status === "SUBMITTED" && !cfr.submissionEmailSentAt) {
+      void sendFeedbackSubmissionReportEmail(cfrRepo, cfr, buildCfrFeedbackPdf).then(
+        (emailResult) => {
+          if (emailResult.error) {
+            console.error(
+              `[CFR #${cfr.id}] Retry of submission report email failed:`,
+              emailResult.error
+            );
+          }
+        }
+      );
+    }
+
     return toPublicFeedback(cfr);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to load public feedback:", error);
     return null;
   }
@@ -223,11 +301,25 @@ export async function submitPublicFeedbackAction(data: Record<string, unknown>) 
       reviewedAt: validated.reviewedAt,
     });
 
+    // Feedback is already saved. Email failures must not roll back submission.
+    const emailResult = await sendFeedbackSubmissionReportEmail(
+      cfrRepo,
+      result,
+      buildCfrFeedbackPdf
+    );
+    if (emailResult.error) {
+      console.error(
+        `[CFR #${result.id}] Feedback saved but submission report email was not sent:`,
+        emailResult.error
+      );
+    }
+
     revalidatePath("/cfr");
     revalidatePath("/cfr/all");
     revalidatePath(`/feedback/${validated.token}`);
     return toPublicFeedback(result);
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to submit feedback:", error);
     if (error instanceof z.ZodError) {
       throw new Error(error.issues.map((issue) => issue.message).join(", "));
@@ -241,15 +333,56 @@ export async function submitPublicFeedbackAction(data: Record<string, unknown>) 
 
 export async function setActionNeededAction(id: number, actionNeeded: boolean) {
   try {
+    await requireAuth();
     const result = await cfrRepo.setActionNeeded(id, actionNeeded);
     revalidatePath("/cfr");
     revalidatePath("/cfr/all");
     return { id: result.id, actionNeeded: result.actionNeeded };
   } catch (error) {
+    rethrowNavigationErrors(error);
     console.error("Failed to set action needed:", error);
     if (error instanceof Error) {
       throw error;
     }
     throw new Error("Failed to set action needed");
+  }
+}
+
+export async function getNotificationsAction() {
+  try {
+    await requireAuth();
+    const [notifications, unreadCount] = await Promise.all([
+      cfrRepo.getNotifications(20),
+      cfrRepo.getUnreadNotificationCount(),
+    ]);
+    return { notifications, unreadCount };
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to fetch notifications:", error);
+    throw new Error("Failed to fetch notifications");
+  }
+}
+
+export async function markNotificationReadAction(id: string) {
+  try {
+    await requireAuth();
+    await cfrRepo.markNotificationRead(id);
+    return { ok: true };
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to mark notification as read:", error);
+    throw new Error("Failed to mark notification as read");
+  }
+}
+
+export async function markAllNotificationsReadAction() {
+  try {
+    await requireAuth();
+    await cfrRepo.markAllNotificationsRead();
+    return { ok: true };
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to mark notifications as read:", error);
+    throw new Error("Failed to mark notifications as read");
   }
 }

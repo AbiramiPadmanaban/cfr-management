@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fa;
+  --foreground: #18181b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #f7f8fa;
+  --color-foreground: #18181b;
+  --color-ink: #18181b;
+  --color-muted: #71717a;
+  --color-line: #e4e4e7;
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d9488;
+  --color-accent-soft: #ecfdf5;
+  --color-sidebar: #ffffff;
+  --color-card: #ffffff;
+  --color-violet: #7c3aed;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
 }
 
 body {
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes cfr-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cfr-fade-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cfr-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cfr-check-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.cfr-fade-up {
+  animation: cfr-fade-up 280ms ease-out both;
+}
+
+.cfr-fade-scale {
+  animation: cfr-fade-scale 180ms ease-out both;
+}
+
+.cfr-check-pop {
+  animation: cfr-check-pop 420ms ease-out both;
+}
+
+.cfr-check-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: cfr-check-draw 420ms 180ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfr-fade-up,
+  .cfr-fade-scale,
+  .cfr-check-pop,
+  .cfr-check-draw {
+    animation: none;
+  }
 }

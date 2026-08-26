@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/server/auth/require-auth";
 
-export default function Home() {
-  redirect("/cfr");
+export default async function Home() {
+  const user = await getCurrentUser();
+  redirect(user ? "/cfr" : "/login");
 }

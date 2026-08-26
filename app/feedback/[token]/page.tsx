@@ -1,6 +1,4 @@
-import {
-  getPublicFeedbackAction,
-} from "@/modules/cfr/presentation/server-actions/cfr-actions";
+import { getPublicFeedbackPageDataHandler } from "@/modules/cfr/presentation/api";
 import {
   CfrExpiredFeedbackView,
   CfrInvalidFeedbackView,
@@ -15,15 +13,15 @@ interface PageProps {
 
 export default async function PublicFeedbackPage({ params }: PageProps) {
   const { token } = await params;
-  const feedback = await getPublicFeedbackAction(token);
+  const data = await getPublicFeedbackPageDataHandler(token);
 
-  if (!feedback) {
+  if (data.kind === "invalid") {
     return <CfrInvalidFeedbackView />;
   }
 
-  if (feedback.expired) {
+  if (data.kind === "expired") {
     return <CfrExpiredFeedbackView />;
   }
 
-  return <CfrPublicFeedbackView token={token} feedback={feedback} />;
+  return <CfrPublicFeedbackView token={data.token} feedback={data.feedback} />;
 }
