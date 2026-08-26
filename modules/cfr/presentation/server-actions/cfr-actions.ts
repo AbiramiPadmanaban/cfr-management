@@ -44,6 +44,28 @@ const cfrInputSchema = z
       .refine((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "A valid client email is required"),
     projectStartDate: z.string().or(z.date()).transform((val) => new Date(val)),
     projectEndDate: z.string().or(z.date()).transform((val) => new Date(val)),
+    documentNo: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((value) => value || null),
+    revNo: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((value) => value || null),
+    revDate: z
+      .union([z.string(), z.date(), z.null()])
+      .optional()
+      .transform((value) => {
+        if (value == null || value === "") {
+          return null;
+        }
+        const date = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }),
   })
   .refine((data) => data.projectEndDate >= data.projectStartDate, {
     message: "Project End Date must be on or after Project Start Date",
@@ -76,22 +98,20 @@ const feedbackSubmitSchema = z.object({
 function toPublicFeedback(cfr: {
   status: "DRAFT" | "SENT" | "SUBMITTED";
   client: string;
+  clientEmail: string;
   projectNumber: string;
-  reviewPeriod: string;
   feedbackSentAt?: Date | null;
   project: {
     projectName: string;
     projectStartDate: Date;
     projectEndDate: Date;
-    department: { name: string };
   };
 }): CfrPublicFeedback {
   return {
     projectName: cfr.project.projectName,
     projectNumber: cfr.projectNumber,
     client: cfr.client,
-    departmentName: cfr.project.department.name,
-    reviewPeriod: cfr.reviewPeriod,
+    clientEmail: cfr.clientEmail,
     projectStartDate: cfr.project.projectStartDate,
     projectEndDate: cfr.project.projectEndDate,
     status: cfr.status,
@@ -152,8 +172,6 @@ export async function createCfrAction(data: Record<string, unknown>) {
           clientName: withProject.client,
           projectName: withProject.project.projectName,
           projectNumber: withProject.projectNumber,
-          departmentName: withProject.project.department.name,
-          reviewPeriod: withProject.reviewPeriod,
           feedbackUrl: buildFeedbackUrl(result.feedbackToken),
         });
       } catch (emailError) {
@@ -251,5 +269,38 @@ export async function setActionNeededAction(id: number, actionNeeded: boolean) {
       throw error;
     }
     throw new Error("Failed to set action needed");
+  }
+}
+
+export async function getNotificationsAction() {
+  try {
+    const [notifications, unreadCount] = await Promise.all([
+      cfrRepo.getNotifications(20),
+      cfrRepo.getUnreadNotificationCount(),
+    ]);
+    return { notifications, unreadCount };
+  } catch (error) {
+    console.error("Failed to fetch notifications:", error);
+    throw new Error("Failed to fetch notifications");
+  }
+}
+
+export async function markNotificationReadAction(id: string) {
+  try {
+    await cfrRepo.markNotificationRead(id);
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to mark notification as read:", error);
+    throw new Error("Failed to mark notification as read");
+  }
+}
+
+export async function markAllNotificationsReadAction() {
+  try {
+    await cfrRepo.markAllNotificationsRead();
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to mark notifications as read:", error);
+    throw new Error("Failed to mark notifications as read");
   }
 }

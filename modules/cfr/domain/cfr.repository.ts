@@ -35,6 +35,9 @@ export interface CfrCreateInput {
   client: string;
   projectNumber: string;
   clientEmail: string;
+  documentNo?: string | null;
+  revNo?: string | null;
+  revDate?: Date | null;
 }
 
 export interface CfrFeedbackSubmitInput {
@@ -57,8 +60,7 @@ export interface CfrPublicFeedback {
   projectName: string;
   projectNumber: string;
   client: string;
-  departmentName: string;
-  reviewPeriod: string;
+  clientEmail: string;
   projectStartDate: Date;
   projectEndDate: Date;
   status: CfrStatus;
@@ -97,6 +99,15 @@ export interface CfrKpis {
   averageRating: number;
 }
 
+export interface CfrNotification {
+  id: string;
+  cfrId: number;
+  title: string;
+  message: string;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
 export interface CfrRepository {
   getDepartments(): Promise<(Department & { projects: Project[] })[]>;
   getCfrs(
@@ -111,4 +122,8 @@ export interface CfrRepository {
   setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject>;
   deleteCfr(id: number): Promise<void>;
   getKpis(): Promise<CfrKpis>;
+  getNotifications(limit?: number): Promise<CfrNotification[]>;
+  getUnreadNotificationCount(): Promise<number>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
 }

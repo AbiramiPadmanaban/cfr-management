@@ -3,10 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BriefcaseBusiness, Lock, Mail, Send } from "lucide-react";
+import { BriefcaseBusiness, FileText, Send } from "lucide-react";
 import type { Department, Project } from "@/app/generated/prisma";
 import { createCfrAction } from "../server-actions/cfr-actions";
-import { CFR_RATING_CRITERIA } from "../components/cfr-rating-criteria";
 import {
   cardClass,
   fieldClass,
@@ -32,6 +31,9 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
   const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
   const [projectEndDate, setProjectEndDate] = useState<Date | null>(null);
   const [reviewPeriod, setReviewPeriod] = useState("");
+  const [documentNo, setDocumentNo] = useState("");
+  const [revNo, setRevNo] = useState("");
+  const [revDate, setRevDate] = useState<Date | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,6 +164,9 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
         projectNumber,
         projectStartDate: projectStartDate?.toISOString() || "",
         projectEndDate: projectEndDate?.toISOString() || "",
+        documentNo: documentNo.trim() || null,
+        revNo: revNo.trim() || null,
+        revDate: revDate?.toISOString() || null,
       });
 
       router.push("/cfr/all");
@@ -186,7 +191,7 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
   };
 
   return (
-    <div className="cfr-fade-up mx-auto flex w-full max-w-5xl flex-col pb-24">
+    <div className="cfr-fade-up flex w-full flex-col pb-24">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">
           Create Customer Feedback Review
@@ -205,12 +210,12 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
       <section className={`${cardClass} mt-6 p-5 sm:p-6`}>
         <div className="mb-5 flex items-start gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
-            <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
+            <FileText className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-ink">Project Context</h3>
+            <h3 className="text-base font-semibold text-ink">Document Details</h3>
             <p className="mt-0.5 text-sm text-muted">
-              These details appear on the customer feedback form and in the request email.
+              Department and document revision information for this feedback report.
             </p>
           </div>
         </div>
@@ -218,7 +223,7 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
         <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>
-              Department / Vertical <span className="text-red-500">*</span>
+              Dept / Vertical <span className="text-red-500">*</span>
             </label>
             <select
               value={departmentId}
@@ -237,20 +242,53 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>
-              Project Name <span className="text-red-500">*</span>
-            </label>
+            <label className={labelClass}>Document Number</label>
             <input
               type="text"
-              value={projectNameText}
-              onChange={handleProjectTextChange}
-              disabled={!departmentId}
-              placeholder={departmentId ? "Enter project name..." : "Select department first..."}
-              className={fieldClass(Boolean(errors.project))}
+              value={documentNo}
+              onChange={(e) => setDocumentNo(e.target.value)}
+              placeholder="e.g. SPES/PMS/HR/002"
+              className={fieldClass()}
             />
-            {errors.project && <span className="text-xs text-red-500">{errors.project}</span>}
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Revision Number</label>
+            <input
+              type="text"
+              value={revNo}
+              onChange={(e) => setRevNo(e.target.value)}
+              placeholder="e.g. 00"
+              className={fieldClass()}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Revision Date</label>
+            <input
+              type="date"
+              value={formatDateToInput(revDate)}
+              onChange={(e) => setRevDate(parseLocalDate(e.target.value))}
+              className={fieldClass()}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={`${cardClass} mt-5 p-5 sm:p-6`}>
+        <div className="mb-5 flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-ink">Client & Project Details</h3>
+            <p className="mt-0.5 text-sm text-muted">
+              These details appear on the customer feedback form and in the request email.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>
               Client Name <span className="text-red-500">*</span>
@@ -289,6 +327,20 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={projectNameText}
+              onChange={handleProjectTextChange}
+              placeholder="Enter project name..."
+              className={fieldClass(Boolean(errors.project))}
+            />
+            {errors.project && <span className="text-xs text-red-500">{errors.project}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
               Project Number <span className="text-red-500">*</span>
             </label>
             <input
@@ -311,25 +363,6 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
             />
             {errors.projectNumber && (
               <span className="text-xs text-red-500">{errors.projectNumber}</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>
-              Review Period <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={reviewPeriod}
-              onChange={(e) => {
-                setReviewPeriod(e.target.value);
-                clearError("reviewPeriod");
-              }}
-              placeholder="e.g. Q1 2026"
-              className={fieldClass(Boolean(errors.reviewPeriod))}
-            />
-            {errors.reviewPeriod && (
-              <span className="text-xs text-red-500">{errors.reviewPeriod}</span>
             )}
           </div>
 
@@ -368,53 +401,25 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
               <span className="text-xs text-red-500">{errors.projectEndDate}</span>
             )}
           </div>
-        </div>
-      </section>
 
-      <section className={`${cardClass} mt-5 p-5 sm:p-6`}>
-        <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-warning">
-            <Lock className="h-5 w-5" aria-hidden="true" />
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Review Period <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={reviewPeriod}
+              onChange={(e) => {
+                setReviewPeriod(e.target.value);
+                clearError("reviewPeriod");
+              }}
+              placeholder="e.g. Q1 2026"
+              className={fieldClass(Boolean(errors.reviewPeriod))}
+            />
+            {errors.reviewPeriod && (
+              <span className="text-xs text-red-500">{errors.reviewPeriod}</span>
+            )}
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-ink">Feedback Ratings</h3>
-            <p className="mt-0.5 text-sm text-muted">
-              The customer will complete these ratings through the secure feedback link.
-            </p>
-          </div>
-        </div>
-        <div className="divide-y divide-line rounded-xl border border-line">
-          {CFR_RATING_CRITERIA.map((criterion, index) => (
-            <div key={criterion.key} className="flex gap-3 px-4 py-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-accent">
-                {index + 1}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-ink">{criterion.label}</p>
-                <p className="mt-0.5 text-xs leading-5 text-muted">{criterion.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className={`${cardClass} mt-5 p-5 sm:p-6`}>
-        <div className="mb-3 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet">
-            <Mail className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-ink">Comments</h3>
-            <p className="mt-0.5 text-sm text-muted">
-              Overall comments and areas of improvement are collected from the customer after they
-              submit feedback.
-            </p>
-          </div>
-        </div>
-        <div className="rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-6 text-muted">
-            {clientEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
-              ? `A secure 24-hour link will be emailed to ${clientEmail.trim()}.`
-              : "Enter a client email above to send a secure 24-hour feedback link."}
         </div>
       </section>
 

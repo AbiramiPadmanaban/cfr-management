@@ -284,12 +284,14 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
       )}
 
       {step === 1 && (
-        <div className={`${cardClass} p-5 sm:p-6`}>
-          <p className="text-sm font-semibold text-ink">{feedback.projectName}</p>
-          <p className="mt-1 text-sm text-muted">
-            {feedback.client} · {feedback.reviewPeriod}
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+        <div className={`${cardClass} space-y-4 p-5 text-sm sm:p-6`}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Project name
+              </p>
+              <p className="mt-1 font-semibold text-ink">{feedback.projectName}</p>
+            </div>
             <div>
               <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
                 Project number
@@ -298,17 +300,25 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
             </div>
             <div>
               <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
-                Department
-              </p>
-              <p className="mt-1 text-ink">{feedback.departmentName}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
                 Project dates
               </p>
               <p className="mt-1 text-ink">
                 {formatDate(feedback.projectStartDate)} – {formatDate(feedback.projectEndDate)}
               </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Client name
+              </p>
+              <p className="mt-1 text-ink">{feedback.client}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Email
+              </p>
+              <p className="mt-1 break-all text-ink">{feedback.clientEmail}</p>
             </div>
           </div>
         </div>

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   ChevronLeft,
   Clock3,
   FilePlus2,
@@ -14,6 +13,7 @@ import {
   Menu,
 } from "lucide-react";
 import { SolidProBrand } from "@/components/shared/solid-pro-logo";
+import { CfrNotificationBell } from "@/modules/cfr/presentation/components/cfr-notification-bell";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/cfr", icon: LayoutDashboard },
@@ -186,29 +186,22 @@ export default function CfrLayout({ children }: { children: React.ReactNode }) {
               <span suppressHydrationWarning>{time}</span>
             </div>
             <div className="hidden h-6 w-px bg-line sm:block" />
-            <button
-              type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors duration-150 hover:bg-zinc-50 hover:text-ink"
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <Bell className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
+            <CfrNotificationBell />
+            {/* <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors duration-150 hover:bg-zinc-50 hover:text-ink"
               aria-label="Apps"
               title="Apps"
             >
               <LayoutGrid className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <div
+            </button> */}
+            {/* <div
               className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white"
               title="SOLiDPRO"
               aria-label="User"
             >
               SP
-            </div>
+            </div> */}
           </div>
         </header>
 

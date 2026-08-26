@@ -25,7 +25,7 @@ const STAR_EMPTY = rgb(0.76, 0.79, 0.81);
 const WHITE = rgb(1, 1, 1);
 const INTERNAL = rgb(0.957, 0.96, 0.964);
 
-const DOCUMENT_NO = "SPES/PMS/HR/002";
+const DOCUMENT_NO_FALLBACK = "—";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const SCORES = [5, 4, 3, 2, 1] as const;
 const STAR_PATH =
@@ -51,6 +51,7 @@ interface ReportCtx {
   pages: PDFPage[];
   fonts: Fonts;
   logo: PDFImage | null;
+  cfr: CfrWithProject;
   y: number;
   generatedAt: string;
 }
@@ -337,7 +338,7 @@ function drawContinuationHeader(ctx: ReportCtx) {
 }
 
 function drawHeader(ctx: ReportCtx) {
-  const { page, fonts, logo } = ctx;
+  const { page, fonts, logo, cfr } = ctx;
   const top = ctx.y;
   const logoWidth = 122;
   let logoHeight = 32;
@@ -370,11 +371,29 @@ function drawHeader(ctx: ReportCtx) {
   const metaX = PAGE.width - MARGIN_X - 132;
   page.drawRectangle({ x: metaX, y: top - 36, width: 1.6, height: 38, color: TEAL });
   drawLabel(page, "DOCUMENT NO", metaX + 10, top - 4, fonts.bold);
-  page.drawText(DOCUMENT_NO, { x: metaX + 10, y: top - 15, size: 8, font: fonts.regular, color: INK });
+  page.drawText(cfr.documentNo?.trim() || DOCUMENT_NO_FALLBACK, {
+    x: metaX + 10,
+    y: top - 15,
+    size: 8,
+    font: fonts.regular,
+    color: INK,
+  });
   drawLabel(page, "REV NO", metaX + 10, top - 26, fonts.bold);
-  page.drawText("—", { x: metaX + 10, y: top - 36, size: 8, font: fonts.regular, color: INK });
+  page.drawText(cfr.revNo?.trim() || "—", {
+    x: metaX + 10,
+    y: top - 36,
+    size: 8,
+    font: fonts.regular,
+    color: INK,
+  });
   drawLabel(page, "REV DATE", metaX + 72, top - 26, fonts.bold);
-  page.drawText("—", { x: metaX + 72, y: top - 36, size: 8, font: fonts.regular, color: INK });
+  page.drawText(cfr.revDate ? formatDisplayDate(cfr.revDate) : "—", {
+    x: metaX + 72,
+    y: top - 36,
+    size: 8,
+    font: fonts.regular,
+    color: INK,
+  });
 
   ctx.y = top - logoHeight - 28;
   page.drawLine({
@@ -755,6 +774,7 @@ export async function buildCfrFeedbackPdf(cfr: CfrWithProject): Promise<Uint8Arr
     pages: [first],
     fonts,
     logo,
+    cfr,
     y: PAGE.height - MARGIN_TOP,
     generatedAt: formatDisplayDate(new Date()),
   };

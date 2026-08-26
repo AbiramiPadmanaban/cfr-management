@@ -18,22 +18,61 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const DEPARTMENTS = [
+  { name: "Digital Transformation", code: "DT" },
+  { name: "Sustainability", code: "SUS" },
+  { name: "Marketing", code: "MKT" },
+  { name: "MUS", code: "MUS" },
+  { name: "Vidhai", code: "VID" },
+  { name: "Finance", code: "FIN" },
+] as const;
+
 async function ensureDepartment(name: string, code: string) {
-  return prisma.department.upsert({
-    where: { code },
-    update: { name },
-    create: { name, code },
-  });
+  const byCode = await prisma.department.findUnique({ where: { code } });
+  if (byCode) {
+    if (byCode.name !== name) {
+      return prisma.department.update({ where: { code }, data: { name } });
+    }
+    return byCode;
+  }
+
+  const byName = await prisma.department.findUnique({ where: { name } });
+  if (byName) {
+    return prisma.department.update({ where: { id: byName.id }, data: { name, code } });
+  }
+
+  return prisma.department.create({ data: { name, code } });
 }
 
 async function main() {
-  console.log("Seeding lookup data only (no CFR records)...");
+  console.log("Seeding department / vertical lookup data...");
 
-  await ensureDepartment("Engineering", "ENG");
-  await ensureDepartment("Finance", "FIN");
-  await ensureDepartment("Technology", "TEC");
+  for (const department of DEPARTMENTS) {
+    await ensureDepartment(department.name, department.code);
+  }
 
-  console.log("Departments are ready. CFR records are not seeded.");
+  const allowedCodes = DEPARTMENTS.map((department) => department.code);
+  const extras = await prisma.department.findMany({
+    where: { code: { notIn: allowedCodes } },
+    include: { _count: { select: { projects: true } } },
+  });
+
+  for (const extra of extras) {
+    if (extra._count.projects === 0) {
+      await prisma.department.delete({ where: { id: extra.id } });
+      console.log(`Removed unused department: ${extra.name}`);
+    } else {
+      console.log(
+        `Kept ${extra.name} because it still has ${extra._count.projects} project(s).`
+      );
+    }
+  }
+
+  const current = await prisma.department.findMany({ orderBy: { name: "asc" } });
+  console.log(
+    "Departments ready:",
+    current.map((department) => department.name).join(", ")
+  );
 }
 
 main()

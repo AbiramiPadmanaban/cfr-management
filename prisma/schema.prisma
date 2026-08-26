@@ -54,12 +54,26 @@ model Cfr {
   client                String
   projectNumber         String
   clientEmail           String
+  documentNo            String?
+  revNo                 String?
+  revDate               DateTime?
   feedbackToken         String?   @unique
   feedbackSentAt        DateTime?
   feedbackSubmittedAt   DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  notifications         Notification[]
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  cfrId     Int
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  cfr       Cfr       @relation(fields: [cfrId], references: [id], onDelete: Cascade)
 }
 
 enum CfrStatus {

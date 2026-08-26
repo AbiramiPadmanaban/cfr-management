@@ -5,8 +5,6 @@ export interface ClientFeedbackEmailInput {
   clientName: string;
   projectName: string;
   projectNumber: string;
-  departmentName: string;
-  reviewPeriod: string;
   feedbackUrl: string;
 }
 
@@ -52,9 +50,7 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
                   <tr>
                     <td style="padding:20px 24px;">
                       ${detailRow("Project", input.projectName)}
-                      ${detailRow("Project Number", input.projectNumber)}
-                      ${detailRow("Department", input.departmentName)}
-                      ${detailRow("Review Period", input.reviewPeriod)}
+                      ${detailRow("Project Number", input.projectNumber, true)}
                     </td>
                   </tr>
                 </table>
@@ -84,9 +80,9 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
 `.trim();
 }
 
-function detailRow(label: string, value: string): string {
+function detailRow(label: string, value: string, last = false): string {
   return `
-    <p style="margin:0 0 12px;">
+    <p style="margin:0 0 ${last ? "0" : "12px"};">
       <span style="display:block;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#a1a1aa;">${escapeHtml(label)}</span>
       <span style="display:block;margin-top:2px;font-size:14px;font-weight:600;color:#18181b;">${escapeHtml(value)}</span>
     </p>
@@ -111,8 +107,6 @@ export async function sendClientFeedbackEmail(input: ClientFeedbackEmailInput): 
     `Please rate Quality of Work, Delivery Timeliness, Communication Quality, Technical Competence, and Overall Satisfaction.`,
     `Project: ${input.projectName}`,
     `Project Number: ${input.projectNumber}`,
-    `Department: ${input.departmentName}`,
-    `Review Period: ${input.reviewPeriod}`,
     "",
     `Provide Feedback: ${input.feedbackUrl}`,
     "This link expires in 24 hours.",

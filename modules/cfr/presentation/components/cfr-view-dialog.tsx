@@ -77,6 +77,9 @@ export function CfrViewDialog({ cfr }: CfrViewDialogProps) {
           <Field label="End Date">{formatShort(cfr.project.projectEndDate)}</Field>
           <Field label="Review Period">{cfr.reviewPeriod}</Field>
           <Field label="Client Email">{cfr.clientEmail}</Field>
+          <Field label="Document No">{cfr.documentNo || "—"}</Field>
+          <Field label="Rev No">{cfr.revNo || "—"}</Field>
+          <Field label="Rev Date">{cfr.revDate ? formatShort(cfr.revDate) : "—"}</Field>
         </div>
       </section>
 

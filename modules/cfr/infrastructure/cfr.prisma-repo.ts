@@ -2,18 +2,28 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type {
   CfrRepository,
-  CfrWithProject,
   CfrFilterInput,
+  CfrWithProject,
   CfrCreateInput,
   CfrFeedbackSubmitInput,
   CfrKpis,
+  CfrNotification,
 } from "../domain/cfr.repository";
 import { isFeedbackLinkExpired } from "../domain/cfr.repository";
 import type { Department, Project, Cfr, Prisma } from "@/app/generated/prisma";
 
+const DEPARTMENT_ORDER = [
+  "Digital Transformation",
+  "Sustainability",
+  "Marketing",
+  "MUS",
+  "Vidhai",
+  "Finance",
+];
+
 export class PrismaCfrRepository implements CfrRepository {
   async getDepartments(): Promise<(Department & { projects: Project[] })[]> {
-    return prisma.department.findMany({
+    const departments = await prisma.department.findMany({
       include: {
         projects: {
           orderBy: {
@@ -21,9 +31,17 @@ export class PrismaCfrRepository implements CfrRepository {
           },
         },
       },
-      orderBy: {
-        name: "asc",
-      },
+    });
+
+    return departments.sort((a, b) => {
+      const aIndex = DEPARTMENT_ORDER.indexOf(a.name);
+      const bIndex = DEPARTMENT_ORDER.indexOf(b.name);
+      const aRank = aIndex === -1 ? DEPARTMENT_ORDER.length : aIndex;
+      const bRank = bIndex === -1 ? DEPARTMENT_ORDER.length : bIndex;
+      if (aRank !== bRank) {
+        return aRank - bRank;
+      }
+      return a.name.localeCompare(b.name);
     });
   }
 
@@ -197,6 +215,9 @@ export class PrismaCfrRepository implements CfrRepository {
         client: data.client,
         projectNumber: data.projectNumber.trim(),
         clientEmail: data.clientEmail,
+        documentNo: data.documentNo?.trim() || null,
+        revNo: data.revNo?.trim() || null,
+        revDate: data.revDate ?? null,
         feedbackToken: data.status === "SENT" ? randomBytes(32).toString("hex") : null,
         feedbackSentAt: data.status === "SENT" ? new Date() : null,
       },
@@ -271,6 +292,14 @@ export class PrismaCfrRepository implements CfrRepository {
       throw new Error("Failed to load submitted feedback");
     }
 
+    await prisma.notification.create({
+      data: {
+        cfrId: submitted.id,
+        title: "Customer feedback received",
+        message: `${submitted.client} submitted a review for ${submitted.project.projectName}.`,
+      },
+    });
+
     return submitted;
   }
 
@@ -336,5 +365,57 @@ export class PrismaCfrRepository implements CfrRepository {
       sent,
       averageRating: parseFloat(averageRating.toFixed(2)),
     };
+  }
+
+  async getNotifications(limit = 20): Promise<CfrNotification[]> {
+    await this.backfillSubmittedNotifications();
+    return prisma.notification.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
+
+  async getUnreadNotificationCount(): Promise<number> {
+    await this.backfillSubmittedNotifications();
+    return prisma.notification.count({
+      where: { readAt: null },
+    });
+  }
+
+  private async backfillSubmittedNotifications(): Promise<void> {
+    const missing = await prisma.cfr.findMany({
+      where: {
+        status: "SUBMITTED",
+        notifications: { none: {} },
+      },
+      include: { project: true },
+    });
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    await prisma.notification.createMany({
+      data: missing.map((cfr) => ({
+        cfrId: cfr.id,
+        title: "Customer feedback received",
+        message: `${cfr.client} submitted a review for ${cfr.project.projectName}.`,
+        createdAt: cfr.feedbackSubmittedAt ?? cfr.updatedAt,
+      })),
+    });
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await prisma.notification.updateMany({
+      where: { id, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await prisma.notification.updateMany({
+      where: { readAt: null },
+      data: { readAt: new Date() },
+    });
   }
 }
