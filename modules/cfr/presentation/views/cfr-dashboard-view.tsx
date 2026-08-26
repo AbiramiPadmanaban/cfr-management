@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { ArrowRight, FilePlus2 } from "lucide-react";
 import type { CfrWithProject, CfrKpis } from "../../domain/cfr.repository";
-
-// Components
 import { CfrKpiCards } from "../components/cfr-kpi-cards";
-import { CfrViewDialog } from "../components/cfr-view-dialog";
+import { CfrStatusBadge } from "../components/cfr-status-badge";
 import { CfrActionNeededMarks, formatCfrDate } from "../components/cfr-action-needed";
+import { getCfrAverageRating } from "../components/cfr-rating-criteria";
+import { cardClass, primaryButtonClass } from "../components/cfr-ui";
 
 export interface CfrDashboardViewProps {
   kpis: CfrKpis;
@@ -15,150 +15,96 @@ export interface CfrDashboardViewProps {
 }
 
 export function CfrDashboardView({ kpis, recentCfrs }: CfrDashboardViewProps) {
-  const [selectedCfr, setSelectedCfr] = useState<CfrWithProject | null>(null);
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "SUBMITTED":
-        return "bg-green-50 text-green-700 border-green-250 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-      case "SENT":
-        return "bg-blue-50 text-blue-700 border-blue-200 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-      case "DRAFT":
-      default:
-        return "bg-amber-50 text-amber-700 border-amber-250 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-    }
-  };
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2.5xl font-black text-slate-900 tracking-tight">My Dashboard</h1>
+    <div className="cfr-fade-up mx-auto max-w-7xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-ink">Customer Feedback Overview</h2>
+          <p className="mt-1 text-sm text-muted">
+            Monitor customer feedback and project satisfaction at a glance.
+          </p>
+        </div>
+        <Link href="/cfr/create" className={primaryButtonClass}>
+          <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+          Create CFR
+        </Link>
       </div>
 
-      {/* 4 KPI Metric Cards */}
       <CfrKpiCards kpis={kpis} />
 
-      {/* Recent Reviews Card */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <section className={`${cardClass} p-5 sm:p-6`}>
+        <div className="flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Recent CFRs</h3>
-            <p className="text-xs text-slate-400">
-              Your most recent customer feedback reviews
-            </p>
+            <h3 className="text-base font-semibold text-ink">Recent CFRs</h3>
+            <p className="mt-0.5 text-sm text-muted">Latest customer feedback activity</p>
           </div>
           <Link
             href="/cfr/all"
-            className="inline-flex h-9 items-center justify-center rounded-lg bg-[#1a3574] px-4 text-xs font-bold text-white hover:bg-[#152e66] transition-colors"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium text-accent transition-colors duration-150 hover:bg-accent-soft"
           >
-            View All CFRs
+            View All
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         </div>
 
-        {/* Recent CFRs Preview Table */}
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-2">
           {recentCfrs.length === 0 ? (
-            <div className="py-8 text-center text-sm text-slate-400">
-              No recent feedback reviews found.
+            <div className="py-12 text-center">
+              <p className="text-sm font-medium text-ink">No recent feedback reviews found.</p>
+              <p className="mt-1 text-sm text-muted">Create a CFR to start collecting customer ratings.</p>
             </div>
           ) : (
-            <table className="w-full min-w-[980px] border-collapse text-left text-sm text-slate-650">
-              <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 font-bold">PROJECT</th>
-                  <th className="px-4 py-3 font-bold">CLIENT</th>
-                  <th className="px-4 py-3 font-bold">OVERALL RATING</th>
-                  <th className="px-4 py-3 font-bold">STATUS</th>
-                  <th className="px-4 py-3 font-bold">DATE RECEIVED</th>
-                  <th className="px-4 py-3 font-bold">BY</th>
-                  <th className="px-4 py-3 font-bold">ACTION NEEDED</th>
-                  <th className="px-4 py-3 font-bold text-right">VIEW</th>
+            <table className="w-full table-fixed border-collapse text-left text-sm">
+              <thead>
+                <tr className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
+                  <th className="px-3 py-3 font-medium">Project</th>
+                  <th className="w-[14%] px-3 py-3 font-medium">Client</th>
+                  <th className="w-[14%] px-3 py-3 font-medium">Overall Rating</th>
+                  <th className="w-[12%] px-3 py-3 font-medium">Status</th>
+                  <th className="w-[14%] px-3 py-3 font-medium">Date Received</th>
+                  <th className="w-[12%] px-3 py-3 font-medium">By</th>
+                  <th className="w-[12%] px-3 py-3 font-medium">Action Needed</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentCfrs.map((cfr) => (
-                  <tr key={cfr.id} className="hover:bg-slate-50/40 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-slate-900">
+              <tbody className="divide-y divide-line">
+                {recentCfrs.map((cfr) => {
+                  const averageRating = getCfrAverageRating(cfr);
+                  return (
+                  <tr key={cfr.id} className="transition-colors duration-150 hover:bg-zinc-50/80">
+                    <td className="px-3 py-3.5">
+                      <div className="truncate font-medium text-ink" title={cfr.project.projectName}>
                         {cfr.project.projectName}
                       </div>
-                      <div className="text-xs text-slate-400">{cfr.projectNumber}</div>
+                      <div className="mt-0.5 truncate font-mono text-xs text-muted">{cfr.projectNumber}</div>
                     </td>
-                    <td className="px-4 py-4 text-slate-700">{cfr.client}</td>
-                    <td className="px-4 py-4 font-bold text-slate-900">
-                      {cfr.overallSatisfaction != null
-                        ? `${cfr.overallSatisfaction} / 5`
-                        : "Pending"}
+                    <td className="truncate px-3 py-3.5 text-ink">{cfr.client}</td>
+                    <td className="px-3 py-3.5 font-semibold whitespace-nowrap text-ink">
+                      {averageRating != null ? `${averageRating.toFixed(1)} / 5` : "Pending"}
                     </td>
-                    <td className="px-4 py-4">
-                      <span className={getStatusBadgeClass(cfr.status)}>
-                        {cfr.status}
-                      </span>
+                    <td className="px-3 py-3.5">
+                      <CfrStatusBadge status={cfr.status} />
                     </td>
-                    <td className="px-4 py-4 text-slate-700">
-                      {cfr.status === "SUBMITTED"
-                        ? formatCfrDate(cfr.feedbackSubmittedAt)
-                        : "—"}
+                    <td className="px-3 py-3.5 whitespace-nowrap text-muted">
+                      {cfr.status === "SUBMITTED" ? formatCfrDate(cfr.feedbackSubmittedAt) : "—"}
                     </td>
-                    <td className="px-4 py-4 text-slate-700">
+                    <td className="truncate px-3 py-3.5 text-ink">
                       {cfr.status === "SUBMITTED" ? cfr.reviewedBy || "—" : "—"}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3.5">
                       <CfrActionNeededMarks
                         cfrId={cfr.id}
                         received={cfr.status === "SUBMITTED"}
                         actionNeeded={cfr.actionNeeded}
                       />
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      {/* View Action Eye icon similar to screenshots */}
-                      <button
-                        onClick={() => setSelectedCfr(cfr)}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:text-[#185adb] shadow-sm transition-all"
-                        title="View Details"
-                      >
-                        <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
         </div>
-      </div>
-
-      {/* Details View Dialog Modal */}
-      {selectedCfr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm">
-          <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">
-                CFR Detailed Scorecard
-              </h3>
-              <button
-                onClick={() => setSelectedCfr(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="mt-4 flex-1 overflow-y-auto pr-1">
-              <CfrViewDialog cfr={selectedCfr} />
-            </div>
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   );
 }

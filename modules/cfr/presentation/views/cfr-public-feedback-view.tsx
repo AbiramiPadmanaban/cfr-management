@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import type { CfrPublicFeedback } from "../../domain/cfr.repository";
 import { submitPublicFeedbackAction } from "../server-actions/cfr-actions";
 import { CFR_RATING_CRITERIA } from "../components/cfr-rating-criteria";
 import { CfrRatingCriterion } from "../components/cfr-rating-criterion";
+import {
+  cardClass,
+  fieldClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  textareaClass,
+} from "../components/cfr-ui";
 
 export interface CfrPublicFeedbackViewProps {
   token: string;
@@ -25,6 +33,12 @@ const MONTH_SHORT = [
   "Nov",
   "Dec",
 ] as const;
+
+const STEPS = [
+  { step: 1, title: "Project", hint: "Confirm the request" },
+  { step: 2, title: "Ratings", hint: "Score each criterion" },
+  { step: 3, title: "Comments", hint: "Share final notes" },
+];
 
 function formatDate(value: Date | string): string {
   const date = new Date(value);
@@ -49,31 +63,77 @@ function todayDateInputValue(): string {
   return `${year}-${month}-${day}`;
 }
 
+function wordCount(value: string): number {
+  const trimmed = value.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
 function CfrFeedbackThankYou({ feedback }: { feedback: CfrPublicFeedback }) {
   return (
-    <div className="mx-auto max-w-2xl space-y-6 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+    <div className="cfr-fade-up mx-auto flex w-full max-w-xl flex-1 flex-col justify-center space-y-6 px-4 py-10 text-center sm:px-8">
+      <div className="cfr-check-pop mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-success">
+        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path
+            className="cfr-check-draw"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.2}
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       </div>
       <div className="space-y-2">
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">
-          Thank you for your valuable feedback!
+        <h1 className="text-3xl font-semibold tracking-tight text-ink">
+          Thank You for Your Valuable Feedback!
         </h1>
-        <p className="text-sm leading-6 text-slate-500">
-          Your feedback for{" "}
-          <span className="font-semibold text-slate-800">{feedback.projectName}</span> has been
-          submitted successfully. Your ratings and comments will help our project team
+        <p className="text-sm leading-6 text-muted">
+          Your feedback for <span className="font-semibold text-ink">{feedback.projectName}</span> has
+          been submitted successfully. Your ratings and comments will help our project team
           continuously improve the quality of our services.
         </p>
       </div>
-      <p className="text-xs text-slate-400">You may now close this window.</p>
+      <p className="text-xs text-zinc-400">You may now close this window.</p>
     </div>
   );
 }
 
+function FeedbackStepper({ current }: { current: number }) {
+  return (
+    <ol className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {STEPS.map((item) => {
+        const complete = current > item.step;
+        const active = current === item.step;
+        return (
+          <li
+            key={item.step}
+            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+              active ? "border-accent/20 bg-accent-soft" : "border-line bg-white"
+            }`}
+          >
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                complete
+                  ? "bg-accent text-white"
+                  : active
+                    ? "bg-accent text-white"
+                    : "bg-zinc-50 text-muted"
+              }`}
+            >
+              {complete ? <Check className="h-4 w-4" aria-hidden="true" /> : item.step}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-ink">{item.title}</p>
+              <p className="text-xs text-muted">{item.hint}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackViewProps) {
+  const [step, setStep] = useState(1);
   const [qualityRating, setQualityRating] = useState(0);
   const [deliveryRating, setDeliveryRating] = useState(0);
   const [communicationRating, setCommunicationRating] = useState(0);
@@ -94,31 +154,85 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
   );
 
   const ratings = {
-    quality: { value: qualityRating, setValue: setQualityRating, remarks: qualityRemarks, setRemarks: setQualityRemarks, errorKey: "qualityRating" },
-    delivery: { value: deliveryRating, setValue: setDeliveryRating, remarks: deliveryRemarks, setRemarks: setDeliveryRemarks, errorKey: "deliveryRating" },
-    communication: { value: communicationRating, setValue: setCommunicationRating, remarks: communicationRemarks, setRemarks: setCommunicationRemarks, errorKey: "communicationRating" },
-    technical: { value: technicalCompetence, setValue: setTechnicalCompetence, remarks: technicalCompetenceRemarks, setRemarks: setTechnicalCompetenceRemarks, errorKey: "technicalCompetence" },
-    overall: { value: overallSatisfaction, setValue: setOverallSatisfaction, remarks: overallSatisfactionRemarks, setRemarks: setOverallSatisfactionRemarks, errorKey: "overallSatisfaction" },
+    quality: {
+      value: qualityRating,
+      setValue: setQualityRating,
+      remarks: qualityRemarks,
+      setRemarks: setQualityRemarks,
+      errorKey: "qualityRating",
+    },
+    delivery: {
+      value: deliveryRating,
+      setValue: setDeliveryRating,
+      remarks: deliveryRemarks,
+      setRemarks: setDeliveryRemarks,
+      errorKey: "deliveryRating",
+    },
+    communication: {
+      value: communicationRating,
+      setValue: setCommunicationRating,
+      remarks: communicationRemarks,
+      setRemarks: setCommunicationRemarks,
+      errorKey: "communicationRating",
+    },
+    technical: {
+      value: technicalCompetence,
+      setValue: setTechnicalCompetence,
+      remarks: technicalCompetenceRemarks,
+      setRemarks: setTechnicalCompetenceRemarks,
+      errorKey: "technicalCompetence",
+    },
+    overall: {
+      value: overallSatisfaction,
+      setValue: setOverallSatisfaction,
+      remarks: overallSatisfactionRemarks,
+      setRemarks: setOverallSatisfactionRemarks,
+      errorKey: "overallSatisfaction",
+    },
   };
 
   if (submittedFeedback) {
     return <CfrFeedbackThankYou feedback={submittedFeedback} />;
   }
 
-  const validate = (): boolean => {
+  const validateRatings = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (qualityRating === 0) newErrors.qualityRating = "Quality is required";
     if (deliveryRating === 0) newErrors.deliveryRating = "Delivery is required";
     if (communicationRating === 0) newErrors.communicationRating = "Communication is required";
     if (technicalCompetence === 0) newErrors.technicalCompetence = "Technical Competence is required";
     if (overallSatisfaction === 0) newErrors.overallSatisfaction = "Overall Satisfaction is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateComments = (): boolean => {
+    const newErrors: Record<string, string> = {};
     if (!reviewedBy.trim()) newErrors.reviewedBy = "Reviewed By is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const goNext = () => {
+    if (step === 1) {
+      setErrors({});
+      setStep(2);
+      return;
+    }
+    if (step === 2 && validateRatings()) {
+      setErrors({});
+      setStep(3);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!validate()) return;
+    if (!validateRatings()) {
+      setStep(2);
+      return;
+    }
+    if (!validateComments()) {
+      return;
+    }
 
     setIsSubmitting(true);
     setErrors({});
@@ -150,70 +264,62 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
   };
 
   return (
-    <div className="w-full space-y-6 pb-12">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">Provide Feedback</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Please rate each criterion and add remarks.
+    <div className="cfr-fade-up mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-8 sm:py-10">
+      <div className="max-w-2xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink">Share Your Feedback</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Your feedback helps us understand your experience and continuously improve our services.
           {feedback.expiresAt && !feedback.expired && (
             <> This link expires on {formatDateTime(feedback.expiresAt)}.</>
           )}
         </p>
       </div>
 
+      <FeedbackStepper current={step} />
+
       {errors.form && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-700">
           {errors.form}
         </div>
       )}
 
-      <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="border-b border-slate-100 pb-3 text-base font-bold text-slate-900">
-          Project Details
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Project</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{feedback.projectName}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Project Number
-            </p>
-            <p className="mt-1 font-mono text-sm text-slate-700">{feedback.projectNumber}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Department
-            </p>
-            <p className="mt-1 text-sm text-slate-700">{feedback.departmentName}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Client</p>
-            <p className="mt-1 text-sm text-slate-700">{feedback.client}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Review Period
-            </p>
-            <p className="mt-1 text-sm text-slate-700">{feedback.reviewPeriod}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Project Dates
-            </p>
-            <p className="mt-1 text-sm text-slate-700">
-              {formatDate(feedback.projectStartDate)} – {formatDate(feedback.projectEndDate)}
-            </p>
+      {step === 1 && (
+        <div className={`${cardClass} p-5 sm:p-6`}>
+          <p className="text-sm font-semibold text-ink">{feedback.projectName}</p>
+          <p className="mt-1 text-sm text-muted">
+            {feedback.client} · {feedback.reviewPeriod}
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Project number
+              </p>
+              <p className="mt-1 font-mono text-ink">{feedback.projectNumber}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Department
+              </p>
+              <p className="mt-1 text-ink">{feedback.departmentName}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium tracking-[0.12em] text-zinc-400 uppercase">
+                Project dates
+              </p>
+              <p className="mt-1 text-ink">
+                {formatDate(feedback.projectStartDate)} – {formatDate(feedback.projectEndDate)}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="border-b border-slate-100 pb-3 text-base font-bold text-slate-900">
-          Ratings
-        </h3>
-        <div className="space-y-5">
+      {step === 2 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-ink">Ratings</h3>
+            <p className="mt-1 text-sm text-muted">Please rate each criterion and add remarks.</p>
+          </div>
           {CFR_RATING_CRITERIA.map((criterion, index) => {
             const field = ratings[criterion.key];
             return (
@@ -227,67 +333,85 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
                 onRatingChange={field.setValue}
                 onRemarksChange={field.setRemarks}
                 ratingError={errors[field.errorKey]}
-                gradientId={`half-star-public-${criterion.key}`}
               />
             );
           })}
         </div>
-      </div>
+      )}
 
-      <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="border-b border-slate-100 pb-3 text-base font-bold text-slate-900">
-          Overall Comments / Area of Improvement
-        </h3>
-        <textarea
-          value={comments}
-          onChange={(e) => setComments(e.target.value)}
-          rows={4}
-          placeholder="Share overall comments or areas of improvement..."
-          className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none focus:border-[#1a3574]"
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Reviewed By <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={reviewedBy}
-              onChange={(e) => setReviewedBy(e.target.value)}
-              placeholder="Name of the reviewer"
-              className={`h-10 w-full rounded-lg border bg-white px-3.5 text-sm text-slate-800 outline-none focus:border-[#1a3574] ${
-                errors.reviewedBy ? "border-red-500" : "border-slate-200"
-              }`}
-            />
-            {errors.reviewedBy && (
-              <span className="text-xs text-red-500">{errors.reviewedBy}</span>
-            )}
+      {step === 3 && (
+        <div className={`space-y-5 ${cardClass} p-5 sm:p-6`}>
+          <h3 className="text-base font-semibold text-ink">
+            Overall Comments / Area of Improvement
+          </h3>
+          <textarea
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            rows={5}
+            placeholder="Share overall comments or areas of improvement..."
+            className={textareaClass}
+          />
+          <div className="flex justify-between text-xs text-zinc-400">
+            <span>{wordCount(comments)} words</span>
+            <span>{comments.length} characters</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-              Date
-            </label>
-            <input
-              type="date"
-              value={reviewedAt}
-              readOnly
-              tabIndex={-1}
-              className="pointer-events-none h-10 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700"
-            />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
+                Reviewed By <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={reviewedBy}
+                onChange={(e) => setReviewedBy(e.target.value)}
+                placeholder="Name of the reviewer"
+                className={fieldClass(Boolean(errors.reviewedBy))}
+              />
+              {errors.reviewedBy && (
+                <span className="text-xs text-red-500">{errors.reviewedBy}</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
+                Date
+              </label>
+              <input
+                type="date"
+                value={reviewedAt}
+                readOnly
+                tabIndex={-1}
+                className="pointer-events-none h-11 w-full cursor-not-allowed rounded-xl border border-line bg-zinc-50 px-3.5 text-sm text-muted"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="flex justify-end border-t border-slate-200 pt-4">
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="h-10 rounded-lg bg-[#1a3574] px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#152e66] focus:outline-none disabled:opacity-60"
-        >
-          {isSubmitting ? "Submitting..." : "Submit Feedback"}
-        </button>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {step > 1 ? (
+          <button type="button" onClick={() => setStep((value) => value - 1)} className={secondaryButtonClass}>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back
+          </button>
+        ) : (
+          <span />
+        )}
+        {step < 3 ? (
+          <button type="button" onClick={goNext} className={primaryButtonClass}>
+            Continue
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className={primaryButtonClass}
+          >
+            {isSubmitting ? "Submitting..." : "Submit Feedback"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -295,24 +419,28 @@ export function CfrPublicFeedbackView({ token, feedback }: CfrPublicFeedbackView
 
 export function CfrExpiredFeedbackView() {
   return (
-    <div className="mx-auto max-w-lg space-y-3 text-center">
-      <h1 className="text-3xl font-black tracking-tight text-slate-900">Feedback link expired</h1>
-      <p className="text-sm leading-6 text-slate-500">
-        This customer feedback link expired after 24 hours. Please contact the administrator to send
-        a new request.
-      </p>
+    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+      <div className="cfr-fade-up max-w-lg space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink">Feedback link expired</h1>
+        <p className="text-sm leading-6 text-muted">
+          This customer feedback link expired after 24 hours. Please contact the administrator to send
+          a new request.
+        </p>
+      </div>
     </div>
   );
 }
 
 export function CfrInvalidFeedbackView() {
   return (
-    <div className="mx-auto max-w-lg space-y-3 text-center">
-      <h1 className="text-3xl font-black tracking-tight text-slate-900">Invalid feedback link</h1>
-      <p className="text-sm leading-6 text-slate-500">
-        This customer feedback link is invalid, expired, or is no longer available. Please contact
-        the administrator if you still need to submit a review.
-      </p>
+    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+      <div className="cfr-fade-up max-w-lg space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink">Invalid feedback link</h1>
+        <p className="text-sm leading-6 text-muted">
+          This customer feedback link is invalid, expired, or is no longer available. Please contact
+          the administrator if you still need to submit a review.
+        </p>
+      </div>
     </div>
   );
 }

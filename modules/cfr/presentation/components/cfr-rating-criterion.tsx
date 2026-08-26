@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 export interface CfrRatingCriterionProps {
   index: number;
   label: string;
@@ -7,7 +11,6 @@ export interface CfrRatingCriterionProps {
   onRatingChange: (value: number) => void;
   onRemarksChange: (value: string) => void;
   ratingError?: string;
-  gradientId: string;
   required?: boolean;
 }
 
@@ -20,74 +23,63 @@ export function CfrRatingCriterion({
   onRatingChange,
   onRemarksChange,
   ratingError,
-  gradientId,
   required = true,
 }: CfrRatingCriterionProps) {
+  const [hovered, setHovered] = useState(0);
+  const displayed = hovered || rating;
+
   return (
-    <div className="space-y-3 border-b border-slate-100 pb-5 last:border-b-0 last:pb-0">
+    <div className="rounded-2xl border border-line bg-white p-4 sm:p-5">
       <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400">{index}.</span>
-          <span className="text-sm font-bold text-slate-900">{label}</span>
-          {required && <span className="text-xs font-bold text-red-500">*</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-accent">
+            {index}
+          </span>
+          <span className="text-sm font-semibold text-ink">{label}</span>
+          {required && <span className="text-xs font-semibold text-red-500">*</span>}
           {rating > 0 && (
-            <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-500">
-              {rating} Star{rating !== 1 ? "s" : ""}
+            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">
+              {rating} / 5
             </span>
           )}
         </div>
-        <p className="pl-5 text-[11px] leading-4 text-slate-400">{description}</p>
+        <p className="pl-8 text-xs leading-5 text-muted">{description}</p>
       </div>
 
-      <div className="flex gap-1.5 pl-5">
+      <div
+        className="mt-4 flex gap-1 pl-8"
+        onMouseLeave={() => setHovered(0)}
+      >
         {[1, 2, 3, 4, 5].map((num) => (
-          <div key={num} className="relative flex h-7 w-7 items-center justify-center">
+          <button
+            key={num}
+            type="button"
+            onClick={() => onRatingChange(num)}
+            onMouseEnter={() => setHovered(num)}
+            onFocus={() => setHovered(num)}
+            onBlur={() => setHovered(0)}
+            title={`Rate ${num}`}
+            aria-label={`Rate ${label} ${num} stars`}
+            className="flex h-9 w-9 items-center justify-center rounded-md transition-transform duration-150 hover:scale-110 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+          >
             <svg
-              className="h-7 w-7 text-amber-400"
+              className={`h-7 w-7 transition-colors duration-150 ${
+                displayed >= num ? "text-accent" : "text-zinc-200"
+              }`}
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              style={{
-                fill:
-                  rating >= num
-                    ? "#fbbf24"
-                    : rating === num - 0.5
-                      ? `url(#${gradientId})`
-                      : "transparent",
-              }}
+              fill="currentColor"
+              aria-hidden="true"
             >
-              <defs>
-                <linearGradient id={gradientId}>
-                  <stop offset="50%" stopColor="#fbbf24" />
-                  <stop offset="50%" stopColor="transparent" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.969 0 1.371 1.24.588 1.81l-3.97 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.888a1 1 0 00-1.176 0l-3.97 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.97-2.888c-.784-.57-.38-1.81.588-1.81h4.906a1 1 0 00.951-.69l1.519-4.674z"
-              />
+              <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.969 0 1.371 1.24.588 1.81l-3.97 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.888a1 1 0 00-1.176 0l-3.97 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.97-2.888c-.784-.57-.38-1.81.588-1.81h4.906a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
-            <button
-              type="button"
-              onClick={() => onRatingChange(num - 0.5)}
-              className="absolute top-0 left-0 z-10 h-full w-1/2 cursor-pointer focus:outline-none"
-              title={`Rate ${num - 0.5}`}
-            />
-            <button
-              type="button"
-              onClick={() => onRatingChange(num)}
-              className="absolute top-0 right-0 z-10 h-full w-1/2 cursor-pointer focus:outline-none"
-              title={`Rate ${num}`}
-            />
-          </div>
+          </button>
         ))}
       </div>
-      {ratingError && <p className="pl-5 text-xs text-red-500">{ratingError}</p>}
+      {ratingError && <p className="mt-2 pl-8 text-xs text-red-500">{ratingError}</p>}
 
-      <div className="pl-5">
-        <label className="mb-1.5 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+      <div className="mt-4 pl-0 sm:pl-8">
+        <label className="mb-1.5 block text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
           Remarks
         </label>
         <textarea
@@ -95,7 +87,7 @@ export function CfrRatingCriterion({
           value={remarks}
           onChange={(e) => onRemarksChange(e.target.value)}
           placeholder={`Add remarks for ${label.toLowerCase()}...`}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
+          className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-all duration-150 placeholder:text-zinc-400 focus:border-accent focus:ring-2 focus:ring-accent/15"
         />
       </div>
     </div>

@@ -31,24 +31,24 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Customer Feedback Request</title>
   </head>
-  <body style="margin:0;padding:0;background-color:#f5f6fa;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f5f6fa;padding:32px 16px;">
+  <body style="margin:0;padding:0;background-color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7f8fa;padding:32px 16px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
             <tr>
-              <td style="background-color:#163172;padding:24px 32px;">
+              <td style="background-color:#0f766e;padding:24px 32px;">
                 <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.04em;">SOLiDPRO</p>
-                <p style="margin:6px 0 0;color:#cbd5e1;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Customer Feedback Review</p>
+                <p style="margin:6px 0 0;color:#ccfbf1;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Customer Feedback Review</p>
               </td>
             </tr>
             <tr>
               <td style="padding:32px;">
-                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">Hi ${escapeHtml(input.clientName)},</p>
-                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#334155;">
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">Hi ${escapeHtml(input.clientName)},</p>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#52525b;">
                   You have been invited to provide customer feedback for the following project. Please rate Quality of Work, Delivery Timeliness, Communication Quality, Technical Competence, and Overall Satisfaction.
                 </p>
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f8fa;border:1px solid #e4e4e7;border-radius:8px;">
                   <tr>
                     <td style="padding:20px 24px;">
                       ${detailRow("Project", input.projectName)}
@@ -59,20 +59,20 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
                   </tr>
                 </table>
                 <p style="margin:28px 0 16px;text-align:center;">
-                  <a href="${escapeHtml(input.feedbackUrl)}" style="display:inline-block;background-color:#1a3574;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;">
+                  <a href="${escapeHtml(input.feedbackUrl)}" style="display:inline-block;background-color:#0f766e;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;">
                     Provide Feedback
                   </a>
                 </p>
-                <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;text-align:center;">
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#71717a;text-align:center;">
                   This link expires in 24 hours.<br /><br />
                   If the button does not work, copy and paste this link into your browser:<br />
-                  <a href="${escapeHtml(input.feedbackUrl)}" style="color:#185adb;word-break:break-all;">${escapeHtml(input.feedbackUrl)}</a>
+                  <a href="${escapeHtml(input.feedbackUrl)}" style="color:#0f766e;word-break:break-all;">${escapeHtml(input.feedbackUrl)}</a>
                 </p>
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 32px;border-top:1px solid #e2e8f0;background:#f8fafc;">
-                <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">© 2026 SOLiDPRO. This is an automated message.</p>
+              <td style="padding:16px 32px;border-top:1px solid #e4e4e7;background:#f7f8fa;">
+                <p style="margin:0;font-size:11px;color:#a1a1aa;text-align:center;">© 2026 SOLiDPRO. This is an automated message.</p>
               </td>
             </tr>
           </table>
@@ -87,8 +87,8 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
 function detailRow(label: string, value: string): string {
   return `
     <p style="margin:0 0 12px;">
-      <span style="display:block;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">${escapeHtml(label)}</span>
-      <span style="display:block;margin-top:2px;font-size:14px;font-weight:600;color:#0f172a;">${escapeHtml(value)}</span>
+      <span style="display:block;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#a1a1aa;">${escapeHtml(label)}</span>
+      <span style="display:block;margin-top:2px;font-size:14px;font-weight:600;color:#18181b;">${escapeHtml(value)}</span>
     </p>
   `;
 }

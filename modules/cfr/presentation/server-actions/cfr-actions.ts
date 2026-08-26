@@ -14,7 +14,7 @@ import { joinCfrRemarks } from "../components/cfr-rating-criteria";
 
 const cfrRepo = new PrismaCfrRepository();
 
-const ratingSchema = z.number().min(1).max(5);
+const ratingSchema = z.number().int().min(1).max(5);
 const optionalRatingSchema = ratingSchema.nullable().optional();
 
 const cfrInputSchema = z

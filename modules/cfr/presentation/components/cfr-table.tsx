@@ -1,5 +1,10 @@
+import { Eye } from "lucide-react";
 import type { CfrWithProject } from "../../domain/cfr.repository";
 import { CfrActionNeededMarks, formatCfrDate } from "./cfr-action-needed";
+import { CfrStatusBadge } from "./cfr-status-badge";
+import { CfrDownloadButton } from "./cfr-download-button";
+import { getCfrAverageRating } from "./cfr-rating-criteria";
+import { iconButtonClass } from "./cfr-ui";
 
 export interface CfrTableProps {
   cfrs: CfrWithProject[];
@@ -7,131 +12,92 @@ export interface CfrTableProps {
 }
 
 export function CfrTable({ cfrs, onView }: CfrTableProps) {
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "SUBMITTED":
-        return "bg-green-50 text-green-700 border-green-200 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-      case "SENT":
-        return "bg-blue-50 text-blue-700 border-blue-200 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-      case "DRAFT":
-      default:
-        return "bg-amber-50 text-amber-700 border-amber-200 rounded-full px-2.5 py-0.5 text-xs font-semibold border";
-    }
-  };
-
   if (cfrs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center">
-        <p className="text-sm font-semibold text-slate-500">No CFRs found.</p>
-        <p className="mt-1 text-xs text-slate-400">
-          Try clearing filters or creating a new feedback review record.
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-zinc-50 py-14 text-center">
+        <p className="text-sm font-semibold text-ink">No CFRs found.</p>
+        <p className="mt-1 text-sm text-muted">
+          Try clearing filters or creating a new feedback request.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1100px] border-collapse text-left text-sm text-slate-600">
-        <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
-          <tr>
-            <th className="px-5 py-3.5">#</th>
-            <th className="px-5 py-3.5">Project</th>
-            <th className="px-5 py-3.5">Department / Vertical</th>
-            <th className="px-5 py-3.5">Client</th>
-            <th className="px-5 py-3.5">CFR Date</th>
-            <th className="px-5 py-3.5">Overall Rating</th>
-            <th className="px-5 py-3.5">Status</th>
-            <th className="px-5 py-3.5">Date Received</th>
-            <th className="px-5 py-3.5">By</th>
-            <th className="px-5 py-3.5">Action Needed</th>
-            <th className="px-5 py-3.5 text-right">View</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {cfrs.map((cfr, index) => {
-            const createdDate = new Date(cfr.createdAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            });
+    <table className="w-full table-fixed border-collapse text-left text-sm">
+      <thead>
+        <tr className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
+          <th className="w-8 px-2 py-3 font-medium">#</th>
+          <th className="px-2 py-3 font-medium">Project</th>
+          <th className="w-[11%] px-2 py-3 font-medium">Department</th>
+          <th className="w-[9%] px-2 py-3 font-medium">Client</th>
+          <th className="w-[9%] px-2 py-3 font-medium">Created</th>
+          <th className="w-[11%] px-2 py-3 font-medium">Overall Rating</th>
+          <th className="w-[9%] px-2 py-3 font-medium">Status</th>
+          <th className="w-[10%] px-2 py-3 font-medium">Date Received</th>
+          <th className="w-[8%] px-2 py-3 font-medium">By</th>
+          <th className="w-[9%] px-2 py-3 font-medium">Action Needed</th>
+          <th className="w-[88px] px-2 py-3 text-right font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-line">
+        {cfrs.map((cfr, index) => {
+          const created = new Date(cfr.createdAt);
+          const createdDate = `${String(created.getDate()).padStart(2, "0")}/${String(
+            created.getMonth() + 1
+          ).padStart(2, "0")}/${created.getFullYear()}`;
 
-            return (
-              <tr
-                key={cfr.id}
-                className="hover:bg-slate-50/30 transition-colors"
-              >
-                {/* Row Number */}
-                <td className="px-5 py-4 text-slate-400 font-medium">
-                  {index + 1}
-                </td>
-                {/* Project Name and Number */}
-                <td className="px-5 py-4">
-                  <div className="font-semibold text-slate-900">
-                    {cfr.project.projectName}
-                  </div>
-                  <div className="text-xs text-slate-400 font-mono">
-                    {cfr.projectNumber}
-                  </div>
-                </td>
-                {/* Department */}
-                <td className="px-5 py-4 text-slate-700">
-                  {cfr.project.department.name}
-                </td>
-                {/* Client */}
-                <td className="px-5 py-4 text-slate-700">
-                  {cfr.client}
-                </td>
-                {/* CFR Date */}
-                <td className="px-5 py-4 text-slate-500 font-medium">
-                  {createdDate}
-                </td>
-                {/* Overall Rating */}
-                    <td className="px-5 py-4 font-bold text-slate-900">
-                      {cfr.overallSatisfaction != null
-                        ? `${cfr.overallSatisfaction} / 5`
-                        : "Pending"}
-                    </td>
-                {/* Status Badge */}
-                <td className="px-5 py-4">
-                  <span className={getStatusBadgeClass(cfr.status)}>
-                    {cfr.status}
-                  </span>
-                </td>
-                <td className="px-5 py-4 text-slate-500 font-medium">
-                  {cfr.status === "SUBMITTED"
-                    ? formatCfrDate(cfr.feedbackSubmittedAt)
-                    : "—"}
-                </td>
-                <td className="px-5 py-4 text-slate-700">
-                  {cfr.status === "SUBMITTED" ? cfr.reviewedBy || "—" : "—"}
-                </td>
-                <td className="px-5 py-4">
-                  <CfrActionNeededMarks
-                    cfrId={cfr.id}
-                    received={cfr.status === "SUBMITTED"}
-                    actionNeeded={cfr.actionNeeded}
-                  />
-                </td>
-                {/* View */}
-                <td className="px-5 py-4 text-right">
+          const averageRating = getCfrAverageRating(cfr);
+
+          return (
+            <tr key={cfr.id} className="transition-colors duration-150 hover:bg-zinc-50/80">
+              <td className="px-2 py-3.5 font-medium text-zinc-400">{index + 1}</td>
+              <td className="px-2 py-3.5">
+                <div className="truncate font-medium text-ink" title={cfr.project.projectName}>
+                  {cfr.project.projectName}
+                </div>
+                <div className="mt-0.5 truncate font-mono text-xs text-muted">{cfr.projectNumber}</div>
+              </td>
+              <td className="truncate px-2 py-3.5 text-ink">{cfr.project.department.name}</td>
+              <td className="truncate px-2 py-3.5 text-ink">{cfr.client}</td>
+              <td className="px-2 py-3.5 whitespace-nowrap text-muted">{createdDate}</td>
+              <td className="px-2 py-3.5 font-semibold whitespace-nowrap text-ink">
+                {averageRating != null ? `${averageRating.toFixed(1)} / 5` : "Pending"}
+              </td>
+              <td className="px-2 py-3.5">
+                <CfrStatusBadge status={cfr.status} />
+              </td>
+              <td className="px-2 py-3.5 whitespace-nowrap text-muted">
+                {cfr.status === "SUBMITTED" ? formatCfrDate(cfr.feedbackSubmittedAt) : "—"}
+              </td>
+              <td className="truncate px-2 py-3.5 text-ink">
+                {cfr.status === "SUBMITTED" ? cfr.reviewedBy || "—" : "—"}
+              </td>
+              <td className="px-2 py-3.5">
+                <CfrActionNeededMarks
+                  cfrId={cfr.id}
+                  received={cfr.status === "SUBMITTED"}
+                  actionNeeded={cfr.actionNeeded}
+                />
+              </td>
+              <td className="px-2 py-3.5">
+                <div className="flex items-center justify-end gap-1.5">
+                  <CfrDownloadButton cfr={cfr} />
                   <button
                     type="button"
                     onClick={() => onView(cfr)}
-                    className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#185adb] shadow-sm transition-all"
-                    title="View Scorecard"
+                    className={iconButtonClass}
+                    title="View scorecard"
+                    aria-label={`View ${cfr.project.projectName}`}
                   >
-                    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

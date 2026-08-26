@@ -1,9 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BriefcaseBusiness, Lock, Mail, Send } from "lucide-react";
 import type { Department, Project } from "@/app/generated/prisma";
 import { createCfrAction } from "../server-actions/cfr-actions";
+import { CFR_RATING_CRITERIA } from "../components/cfr-rating-criteria";
+import {
+  cardClass,
+  fieldClass,
+  labelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  selectChevron,
+} from "../components/cfr-ui";
 
 export interface CfrCreateViewProps {
   departments: (Department & { projects: Project[] })[];
@@ -174,174 +185,253 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
     return `${year}-${month}-${day}`;
   };
 
-  const fieldClass = (hasError: boolean) =>
-    `h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-slate-800 outline-none focus:border-[#1a3574] ${
-      hasError ? "border-red-500" : "border-slate-200"
-    }`;
-
-  const labelClass = "text-xs font-semibold text-slate-600";
-
   return (
-    <div className="flex min-h-full w-full flex-col">
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">Create CFR</h1>
-        <button
-          type="button"
-          onClick={sendToClient}
-          disabled={isSubmitting}
-          className="h-11 rounded-lg bg-[#1a3574] px-8 text-sm font-semibold text-white transition-colors hover:bg-[#152e66] focus:outline-none disabled:opacity-60"
-        >
-          {isSubmitting ? "Sending..." : "Send to Client"}
-        </button>
+    <div className="cfr-fade-up mx-auto flex w-full max-w-5xl flex-col pb-24">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">
+          Create Customer Feedback Review
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted">
+          Capture the project context and send a secure 24-hour feedback link to the customer.
+        </p>
       </div>
 
       {errors.form && (
-        <div className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <div className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {errors.form}
         </div>
       )}
 
-      <div className="mt-6 flex-1 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="grid grid-cols-1 content-start gap-x-10 gap-y-6 md:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Department / Vertical</label>
-          <select
-            value={departmentId}
-            onChange={(e) => handleDepartmentChange(e.target.value)}
-            className={`${fieldClass(Boolean(errors.department))} appearance-none`}
-            style={{
-              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 12px center",
-              backgroundSize: "16px",
-            }}
+      <section className={`${cardClass} mt-6 p-5 sm:p-6`}>
+        <div className="mb-5 flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-ink">Project Context</h3>
+            <p className="mt-0.5 text-sm text-muted">
+              These details appear on the customer feedback form and in the request email.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Department / Vertical <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={departmentId}
+              onChange={(e) => handleDepartmentChange(e.target.value)}
+              className={`${fieldClass(Boolean(errors.department))} appearance-none`}
+              style={selectChevron}
+            >
+              <option value="">Select Department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            {errors.department && <span className="text-xs text-red-500">{errors.department}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={projectNameText}
+              onChange={handleProjectTextChange}
+              disabled={!departmentId}
+              placeholder={departmentId ? "Enter project name..." : "Select department first..."}
+              className={fieldClass(Boolean(errors.project))}
+            />
+            {errors.project && <span className="text-xs text-red-500">{errors.project}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Client Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={client}
+              onChange={(e) => {
+                setClient(e.target.value);
+                clearError("client");
+              }}
+              placeholder="Enter client name..."
+              className={fieldClass(Boolean(errors.client))}
+            />
+            {errors.client && <span className="text-xs text-red-500">{errors.client}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Client Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={clientEmail}
+              onChange={(e) => {
+                setClientEmail(e.target.value);
+                clearError("clientEmail");
+              }}
+              placeholder="client@company.com"
+              className={fieldClass(Boolean(errors.clientEmail))}
+            />
+            {errors.clientEmail && (
+              <span className="text-xs text-red-500">{errors.clientEmail}</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Project Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={projectNumber}
+              onChange={(e) => {
+                const value = e.target.value;
+                setProjectNumber(value);
+                if (isProjectNumberTaken(value, projectId)) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    projectNumber: "Project number already exists",
+                  }));
+                } else {
+                  clearError("projectNumber");
+                }
+              }}
+              placeholder="Enter project number..."
+              className={fieldClass(Boolean(errors.projectNumber))}
+            />
+            {errors.projectNumber && (
+              <span className="text-xs text-red-500">{errors.projectNumber}</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Review Period <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={reviewPeriod}
+              onChange={(e) => {
+                setReviewPeriod(e.target.value);
+                clearError("reviewPeriod");
+              }}
+              placeholder="e.g. Q1 2026"
+              className={fieldClass(Boolean(errors.reviewPeriod))}
+            />
+            {errors.reviewPeriod && (
+              <span className="text-xs text-red-500">{errors.reviewPeriod}</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Project Start Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={formatDateToInput(projectStartDate)}
+              onChange={(e) => {
+                setProjectStartDate(parseLocalDate(e.target.value));
+                clearError("projectStartDate");
+              }}
+              className={fieldClass(Boolean(errors.projectStartDate))}
+            />
+            {errors.projectStartDate && (
+              <span className="text-xs text-red-500">{errors.projectStartDate}</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>
+              Project End Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={formatDateToInput(projectEndDate)}
+              onChange={(e) => {
+                setProjectEndDate(parseLocalDate(e.target.value));
+                clearError("projectEndDate");
+              }}
+              className={fieldClass(Boolean(errors.projectEndDate))}
+            />
+            {errors.projectEndDate && (
+              <span className="text-xs text-red-500">{errors.projectEndDate}</span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className={`${cardClass} mt-5 p-5 sm:p-6`}>
+        <div className="mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-warning">
+            <Lock className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-ink">Feedback Ratings</h3>
+            <p className="mt-0.5 text-sm text-muted">
+              The customer will complete these ratings through the secure feedback link.
+            </p>
+          </div>
+        </div>
+        <div className="divide-y divide-line rounded-xl border border-line">
+          {CFR_RATING_CRITERIA.map((criterion, index) => (
+            <div key={criterion.key} className="flex gap-3 px-4 py-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-accent">
+                {index + 1}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-ink">{criterion.label}</p>
+                <p className="mt-0.5 text-xs leading-5 text-muted">{criterion.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={`${cardClass} mt-5 p-5 sm:p-6`}>
+        <div className="mb-3 flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet">
+            <Mail className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-ink">Comments</h3>
+            <p className="mt-0.5 text-sm text-muted">
+              Overall comments and areas of improvement are collected from the customer after they
+              submit feedback.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-6 text-muted">
+            {clientEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
+              ? `A secure 24-hour link will be emailed to ${clientEmail.trim()}.`
+              : "Enter a client email above to send a secure 24-hour feedback link."}
+        </div>
+      </section>
+
+      <div className="sticky bottom-0 z-10 mt-6 -mx-4 border-t border-line bg-background/95 px-4 py-4 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-5">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/cfr" className={secondaryButtonClass}>
+            Cancel
+          </Link>
+          <button
+            type="button"
+            onClick={sendToClient}
+            disabled={isSubmitting}
+            className={primaryButtonClass}
           >
-            <option value="">Select Department</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          {errors.department && <span className="text-xs text-red-500">{errors.department}</span>}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Project Name</label>
-          <input
-            type="text"
-            value={projectNameText}
-            onChange={handleProjectTextChange}
-            disabled={!departmentId}
-            placeholder={departmentId ? "Enter project name..." : "Select department first..."}
-            className={`${fieldClass(Boolean(errors.project))} disabled:opacity-50`}
-          />
-          {errors.project && <span className="text-xs text-red-500">{errors.project}</span>}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Client Name</label>
-          <input
-            type="text"
-            value={client}
-            onChange={(e) => {
-              setClient(e.target.value);
-              clearError("client");
-            }}
-            placeholder="Enter Client name..."
-            className={fieldClass(Boolean(errors.client))}
-          />
-          {errors.client && <span className="text-xs text-red-500">{errors.client}</span>}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Client Email</label>
-          <input
-            type="email"
-            value={clientEmail}
-            onChange={(e) => {
-              setClientEmail(e.target.value);
-              clearError("clientEmail");
-            }}
-            placeholder="client@company.com"
-            className={fieldClass(Boolean(errors.clientEmail))}
-          />
-          {errors.clientEmail && <span className="text-xs text-red-500">{errors.clientEmail}</span>}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Project Number</label>
-          <input
-            type="text"
-            value={projectNumber}
-            onChange={(e) => {
-              const value = e.target.value;
-              setProjectNumber(value);
-              if (isProjectNumberTaken(value, projectId)) {
-                setErrors((prev) => ({
-                  ...prev,
-                  projectNumber: "Project number already exists",
-                }));
-              } else {
-                clearError("projectNumber");
-              }
-            }}
-            placeholder="Enter Project Number..."
-            className={fieldClass(Boolean(errors.projectNumber))}
-          />
-          {errors.projectNumber && (
-            <span className="text-xs text-red-500">{errors.projectNumber}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Review Period</label>
-          <input
-            type="text"
-            value={reviewPeriod}
-            onChange={(e) => {
-              setReviewPeriod(e.target.value);
-              clearError("reviewPeriod");
-            }}
-            placeholder="e.g. Q1 2026"
-            className={fieldClass(Boolean(errors.reviewPeriod))}
-          />
-          {errors.reviewPeriod && (
-            <span className="text-xs text-red-500">{errors.reviewPeriod}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Project Start Date</label>
-          <input
-            type="date"
-            value={formatDateToInput(projectStartDate)}
-            onChange={(e) => {
-              setProjectStartDate(parseLocalDate(e.target.value));
-              clearError("projectStartDate");
-            }}
-            className={fieldClass(Boolean(errors.projectStartDate))}
-          />
-          {errors.projectStartDate && (
-            <span className="text-xs text-red-500">{errors.projectStartDate}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className={labelClass}>Project End Date</label>
-          <input
-            type="date"
-            value={formatDateToInput(projectEndDate)}
-            onChange={(e) => {
-              setProjectEndDate(parseLocalDate(e.target.value));
-              clearError("projectEndDate");
-            }}
-            className={fieldClass(Boolean(errors.projectEndDate))}
-          />
-          {errors.projectEndDate && (
-            <span className="text-xs text-red-500">{errors.projectEndDate}</span>
-          )}
-        </div>
+            <Send className="h-4 w-4" aria-hidden="true" />
+            {isSubmitting ? "Sending..." : "Send Feedback Request"}
+          </button>
         </div>
       </div>
     </div>
