@@ -148,6 +148,15 @@ export async function getKpisAction() {
   }
 }
 
+export async function getDashboardOverviewAction() {
+  try {
+    return await cfrRepo.getDashboardOverview();
+  } catch (error) {
+    console.error("Failed to fetch dashboard overview:", error);
+    throw new Error("Failed to fetch dashboard overview");
+  }
+}
+
 export async function createCfrAction(data: Record<string, unknown>) {
   try {
     const validated = cfrInputSchema.parse(data);

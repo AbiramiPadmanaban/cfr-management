@@ -99,6 +99,24 @@ export interface CfrKpis {
   averageRating: number;
 }
 
+export interface CfrTrendPoint {
+  month: string;
+  count: number;
+}
+
+export interface CfrDepartmentRating {
+  departmentName: string;
+  averageRating: number;
+  count: number;
+}
+
+export interface CfrDashboardOverview {
+  kpis: CfrKpis;
+  trend: CfrTrendPoint[];
+  departmentRatings: CfrDepartmentRating[];
+  recentFeedback: CfrWithProject[];
+}
+
 export interface CfrNotification {
   id: string;
   cfrId: number;
@@ -122,6 +140,7 @@ export interface CfrRepository {
   setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject>;
   deleteCfr(id: number): Promise<void>;
   getKpis(): Promise<CfrKpis>;
+  getDashboardOverview(): Promise<CfrDashboardOverview>;
   getNotifications(limit?: number): Promise<CfrNotification[]>;
   getUnreadNotificationCount(): Promise<number>;
   markNotificationRead(id: string): Promise<void>;
