@@ -7,10 +7,46 @@ import type {
   CfrCreateInput,
   CfrFeedbackSubmitInput,
   CfrKpis,
+  CfrDashboardOverview,
   CfrNotification,
 } from "../domain/cfr.repository";
 import { isFeedbackLinkExpired } from "../domain/cfr.repository";
 import type { Department, Project, Cfr, Prisma } from "@/app/generated/prisma";
+
+function averageCfrRating(cfr: {
+  qualityRating: number | null;
+  deliveryRating: number | null;
+  communicationRating: number | null;
+  technicalCompetence: number | null;
+  overallSatisfaction: number | null;
+}): number | null {
+  const ratings = [
+    cfr.qualityRating,
+    cfr.deliveryRating,
+    cfr.communicationRating,
+    cfr.technicalCompetence,
+    cfr.overallSatisfaction,
+  ].filter((rating): rating is number => rating != null);
+
+  if (ratings.length === 0) {
+    return null;
+  }
+
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+}
+
+function lastSixMonthBuckets() {
+  const now = new Date();
+  const months: { key: string; label: string }[] = [];
+  for (let offset = 5; offset >= 0; offset -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    months.push({
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      label: date.toLocaleDateString("en-US", { month: "short" }),
+    });
+  }
+  return months;
+}
 
 const DEPARTMENT_ORDER = [
   "Digital Transformation",
@@ -329,29 +365,52 @@ export class PrismaCfrRepository implements CfrRepository {
   }
 
   async getKpis(): Promise<CfrKpis> {
-    const aggregate = await prisma.cfr.aggregate({
-      _avg: {
-        overallSatisfaction: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
+    const overview = await this.getDashboardOverview();
+    return overview.kpis;
+  }
 
-    const statusCounts = await prisma.cfr.groupBy({
-      by: ["status"],
-      _count: {
-        id: true,
-      },
-    });
+  async getDashboardOverview(): Promise<CfrDashboardOverview> {
+    const [statusCounts, submittedRows, recentFeedback] = await Promise.all([
+      prisma.cfr.groupBy({
+        by: ["status"],
+        _count: { id: true },
+      }),
+      prisma.cfr.findMany({
+        where: { status: "SUBMITTED" },
+        select: {
+          qualityRating: true,
+          deliveryRating: true,
+          communicationRating: true,
+          technicalCompetence: true,
+          overallSatisfaction: true,
+          feedbackSubmittedAt: true,
+          createdAt: true,
+          project: {
+            select: {
+              department: {
+                select: { name: true },
+              },
+            },
+          },
+        },
+      }),
+      prisma.cfr.findMany({
+        where: { status: "SUBMITTED" },
+        include: {
+          project: {
+            include: { department: true },
+          },
+        },
+        orderBy: { feedbackSubmittedAt: "desc" },
+        take: 5,
+      }),
+    ]);
 
-    const total = aggregate._count.id || 0;
-    const averageRating = aggregate._avg.overallSatisfaction || 0;
-
+    let total = 0;
     let submitted = 0;
     let sent = 0;
-
     for (const group of statusCounts) {
+      total += group._count.id;
       if (group.status === "SUBMITTED") {
         submitted = group._count.id;
       } else if (group.status === "SENT") {
@@ -359,11 +418,54 @@ export class PrismaCfrRepository implements CfrRepository {
       }
     }
 
+    const scores = submittedRows
+      .map((row) => averageCfrRating(row))
+      .filter((score): score is number => score != null);
+    const averageRating =
+      scores.length === 0 ? 0 : scores.reduce((sum, score) => sum + score, 0) / scores.length;
+
+    const buckets = lastSixMonthBuckets();
+    const trendCounts = new Map(buckets.map((bucket) => [bucket.key, 0]));
+    for (const row of submittedRows) {
+      const submittedAt = row.feedbackSubmittedAt ?? row.createdAt;
+      const key = `${submittedAt.getFullYear()}-${String(submittedAt.getMonth() + 1).padStart(2, "0")}`;
+      if (trendCounts.has(key)) {
+        trendCounts.set(key, (trendCounts.get(key) ?? 0) + 1);
+      }
+    }
+
+    const departmentTotals = new Map<string, { sum: number; count: number }>();
+    for (const row of submittedRows) {
+      const score = averageCfrRating(row);
+      if (score == null) {
+        continue;
+      }
+      const name = row.project.department.name;
+      const current = departmentTotals.get(name) ?? { sum: 0, count: 0 };
+      departmentTotals.set(name, { sum: current.sum + score, count: current.count + 1 });
+    }
+
+    const departmentRatings = [...departmentTotals.entries()]
+      .map(([departmentName, stats]) => ({
+        departmentName,
+        averageRating: parseFloat((stats.sum / stats.count).toFixed(1)),
+        count: stats.count,
+      }))
+      .sort((a, b) => b.averageRating - a.averageRating || a.departmentName.localeCompare(b.departmentName));
+
     return {
-      total,
-      submitted,
-      sent,
-      averageRating: parseFloat(averageRating.toFixed(2)),
+      kpis: {
+        total,
+        submitted,
+        sent,
+        averageRating: parseFloat(averageRating.toFixed(1)),
+      },
+      trend: buckets.map((bucket) => ({
+        month: bucket.label,
+        count: trendCounts.get(bucket.key) ?? 0,
+      })),
+      departmentRatings,
+      recentFeedback,
     };
   }
 
