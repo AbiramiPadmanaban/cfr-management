@@ -128,43 +128,19 @@ function ratingBucket(rating: number | null): 5 | 4 | 3 | 2 | 1 | null {
 }
 
 async function loadSolidProLogoPng(): Promise<Uint8Array | null> {
-  if (typeof document === "undefined") {
-    return null;
-  }
   try {
-    const response = await fetch("/SP_Logo.svg");
-    if (!response.ok) {
-      return null;
-    }
-    const svg = await response.text();
-    const objectUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-    try {
-      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Failed to load SP_Logo.svg"));
-        img.src = objectUrl;
-      });
-      const scale = 3;
-      const cropY = 25;
-      const cropH = 80;
-      const canvas = document.createElement("canvas");
-      canvas.width = 477 * scale;
-      canvas.height = cropH * scale;
-      const context = canvas.getContext("2d");
-      if (!context) {
+    if (typeof window !== "undefined") {
+      const response = await fetch("/SP_Logo.png");
+      if (!response.ok) {
         return null;
       }
-      context.setTransform(scale, 0, 0, scale, 0, 0);
-      context.drawImage(image, 0, -cropY, 477, 128);
-      const pngBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!pngBlob) {
-        return null;
-      }
-      return new Uint8Array(await pngBlob.arrayBuffer());
-    } finally {
-      URL.revokeObjectURL(objectUrl);
+      return new Uint8Array(await response.arrayBuffer());
     }
+
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const filePath = join(process.cwd(), "public", "SP_Logo.png");
+    return new Uint8Array(await readFile(filePath));
   } catch {
     return null;
   }
@@ -316,13 +292,22 @@ function drawContinuationHeader(ctx: ReportCtx) {
   const { page, fonts, logo } = ctx;
   let logoHeight = 18;
   if (logo) {
-    const w = 86;
+    const w = 110;
     logoHeight = (logo.height / logo.width) * w;
-    page.drawImage(logo, { x: MARGIN_X, y: ctx.y - logoHeight + 6, width: w, height: logoHeight });
+    page.drawImage(logo, { x: MARGIN_X, y: ctx.y - logoHeight + 4, width: w, height: logoHeight });
+  } else {
+    page.drawText("SOLIDPRO", {
+      x: MARGIN_X,
+      y: ctx.y - 10,
+      size: 11,
+      font: fonts.bold,
+      color: rgb(23 / 255, 71 / 255, 158 / 255),
+    });
+    logoHeight = 14;
   }
   page.drawText("CUSTOMER FEEDBACK REPORT", {
     x: MARGIN_X,
-    y: ctx.y - logoHeight - 6,
+    y: ctx.y - logoHeight - 8,
     size: 8,
     font: fonts.bold,
     color: MUTED,
@@ -340,8 +325,8 @@ function drawContinuationHeader(ctx: ReportCtx) {
 function drawHeader(ctx: ReportCtx) {
   const { page, fonts, logo, cfr } = ctx;
   const top = ctx.y;
-  const logoWidth = 122;
-  let logoHeight = 32;
+  const logoWidth = 140;
+  let logoHeight = 28;
   if (logo) {
     logoHeight = (logo.height / logo.width) * logoWidth;
     page.drawImage(logo, {
@@ -358,6 +343,7 @@ function drawHeader(ctx: ReportCtx) {
       font: fonts.bold,
       color: rgb(23 / 255, 71 / 255, 158 / 255),
     });
+    logoHeight = 18;
   }
 
   page.drawText("CUSTOMER FEEDBACK REPORT", {
@@ -395,7 +381,7 @@ function drawHeader(ctx: ReportCtx) {
     color: INK,
   });
 
-  ctx.y = top - logoHeight - 28;
+  ctx.y = top - Math.max(logoHeight + 28, 52);
   page.drawLine({
     start: { x: MARGIN_X, y: ctx.y },
     end: { x: PAGE.width - MARGIN_X, y: ctx.y },

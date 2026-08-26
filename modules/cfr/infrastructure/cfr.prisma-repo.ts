@@ -8,6 +8,7 @@ import type {
   CfrFeedbackSubmitInput,
   CfrKpis,
   CfrDashboardOverview,
+  CfrSatisfactionPoint,
   CfrNotification,
 } from "../domain/cfr.repository";
 import { isFeedbackLinkExpired } from "../domain/cfr.repository";
@@ -35,17 +36,10 @@ function averageCfrRating(cfr: {
   return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
 }
 
-function lastSixMonthBuckets() {
-  const now = new Date();
-  const months: { key: string; label: string }[] = [];
-  for (let offset = 5; offset >= 0; offset -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-    months.push({
-      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-      label: date.toLocaleDateString("en-US", { month: "short" }),
-    });
-  }
-  return months;
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function roundRating(value: number): number {
+  return parseFloat(value.toFixed(1));
 }
 
 const DEPARTMENT_ORDER = [
@@ -89,7 +83,7 @@ export class PrismaCfrRepository implements CfrRepository {
     const where: Prisma.CfrWhereInput = {};
 
     if (filters) {
-      const { departmentId, projectId, status, search } = filters;
+      const { departmentId, projectId, status, search, dateFrom, dateTo } = filters;
 
       if (projectId) {
         where.projectId = projectId;
@@ -101,6 +95,25 @@ export class PrismaCfrRepository implements CfrRepository {
 
       if (status) {
         where.status = status;
+      }
+
+      if (dateFrom || dateTo) {
+        const createdAtFilter: Prisma.DateTimeFilter = {};
+        if (dateFrom) {
+          const from = new Date(`${dateFrom}T00:00:00.000`);
+          if (!Number.isNaN(from.getTime())) {
+            createdAtFilter.gte = from;
+          }
+        }
+        if (dateTo) {
+          const to = new Date(`${dateTo}T23:59:59.999`);
+          if (!Number.isNaN(to.getTime())) {
+            createdAtFilter.lte = to;
+          }
+        }
+        if (createdAtFilter.gte || createdAtFilter.lte) {
+          where.createdAt = createdAtFilter;
+        }
       }
 
       if (search && search.trim() !== "") {
@@ -251,6 +264,10 @@ export class PrismaCfrRepository implements CfrRepository {
         client: data.client,
         projectNumber: data.projectNumber.trim(),
         clientEmail: data.clientEmail,
+        sentByEmail:
+          data.status === "SENT" && data.sentByEmail?.trim()
+            ? data.sentByEmail.trim().toLowerCase()
+            : null,
         documentNo: data.documentNo?.trim() || null,
         revNo: data.revNo?.trim() || null,
         revDate: data.revDate ?? null,
@@ -339,6 +356,32 @@ export class PrismaCfrRepository implements CfrRepository {
     return submitted;
   }
 
+  async claimSubmissionEmailSend(id: number): Promise<boolean> {
+    const result = await prisma.cfr.updateMany({
+      where: {
+        id,
+        status: "SUBMITTED",
+        submissionEmailSentAt: null,
+      },
+      data: {
+        submissionEmailSentAt: new Date(),
+      },
+    });
+    return result.count === 1;
+  }
+
+  async releaseSubmissionEmailSend(id: number): Promise<void> {
+    await prisma.cfr.updateMany({
+      where: {
+        id,
+        status: "SUBMITTED",
+      },
+      data: {
+        submissionEmailSentAt: null,
+      },
+    });
+  }
+
   async setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject> {
     const existing = await this.getCfrById(id);
     if (!existing) {
@@ -388,7 +431,7 @@ export class PrismaCfrRepository implements CfrRepository {
           project: {
             select: {
               department: {
-                select: { name: true },
+                select: { id: true, name: true },
               },
             },
           },
@@ -424,31 +467,99 @@ export class PrismaCfrRepository implements CfrRepository {
     const averageRating =
       scores.length === 0 ? 0 : scores.reduce((sum, score) => sum + score, 0) / scores.length;
 
-    const buckets = lastSixMonthBuckets();
-    const trendCounts = new Map(buckets.map((bucket) => [bucket.key, 0]));
-    for (const row of submittedRows) {
-      const submittedAt = row.feedbackSubmittedAt ?? row.createdAt;
-      const key = `${submittedAt.getFullYear()}-${String(submittedAt.getMonth() + 1).padStart(2, "0")}`;
-      if (trendCounts.has(key)) {
-        trendCounts.set(key, (trendCounts.get(key) ?? 0) + 1);
-      }
-    }
+    const monthlyTotals = new Map<string, { sum: number; count: number; year: number; month: number }>();
+    const yearlyTotals = new Map<number, { sum: number; count: number }>();
+    const yearSet = new Set<number>();
 
-    const departmentTotals = new Map<string, { sum: number; count: number }>();
     for (const row of submittedRows) {
       const score = averageCfrRating(row);
       if (score == null) {
         continue;
       }
-      const name = row.project.department.name;
-      const current = departmentTotals.get(name) ?? { sum: 0, count: 0 };
-      departmentTotals.set(name, { sum: current.sum + score, count: current.count + 1 });
+      const submittedAt = row.feedbackSubmittedAt ?? row.createdAt;
+      const year = submittedAt.getFullYear();
+      const month = submittedAt.getMonth() + 1;
+      const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+
+      yearSet.add(year);
+
+      const monthCurrent = monthlyTotals.get(monthKey) ?? { sum: 0, count: 0, year, month };
+      monthlyTotals.set(monthKey, {
+        sum: monthCurrent.sum + score,
+        count: monthCurrent.count + 1,
+        year,
+        month,
+      });
+
+      const yearCurrent = yearlyTotals.get(year) ?? { sum: 0, count: 0 };
+      yearlyTotals.set(year, {
+        sum: yearCurrent.sum + score,
+        count: yearCurrent.count + 1,
+      });
     }
 
-    const departmentRatings = [...departmentTotals.entries()]
-      .map(([departmentName, stats]) => ({
+    const nowYear = new Date().getFullYear();
+    yearSet.add(nowYear);
+    const availableYears = [...yearSet].sort((a, b) => a - b);
+
+    const monthly = availableYears.flatMap((year) =>
+      MONTH_LABELS.map((label, index) => {
+        const month = index + 1;
+        const key = `${year}-${String(month).padStart(2, "0")}`;
+        const stats = monthlyTotals.get(key);
+        return {
+          key,
+          label,
+          year,
+          month,
+          averageRating: stats ? roundRating(stats.sum / stats.count) : null,
+        };
+      })
+    );
+
+    const yearlyStart = availableYears[0] ?? nowYear;
+    const yearlyEnd = Math.max(availableYears[availableYears.length - 1] ?? nowYear, nowYear);
+    const yearly: CfrSatisfactionPoint[] = [];
+    for (let year = yearlyStart; year <= yearlyEnd; year += 1) {
+      const stats = yearlyTotals.get(year);
+      yearly.push({
+        key: String(year),
+        label: String(year),
+        year,
+        averageRating: stats ? roundRating(stats.sum / stats.count) : null,
+      });
+    }
+
+    const departmentTotals = new Map<
+      string,
+      { departmentId: string; departmentName: string; sum: number; count: number }
+    >();
+    for (const row of submittedRows) {
+      const score = averageCfrRating(row);
+      if (score == null) {
+        continue;
+      }
+      const departmentId = row.project.department.id;
+      const departmentName = row.project.department.name;
+      const current = departmentTotals.get(departmentId) ?? {
+        departmentId,
         departmentName,
-        averageRating: parseFloat((stats.sum / stats.count).toFixed(1)),
+        sum: 0,
+        count: 0,
+      };
+      departmentTotals.set(departmentId, {
+        departmentId,
+        departmentName,
+        sum: current.sum + score,
+        count: current.count + 1,
+      });
+    }
+
+    const departmentRatings = [...departmentTotals.values()]
+      .map((stats) => ({
+        departmentId: stats.departmentId,
+        departmentName: stats.departmentName,
+        averageRating: roundRating(stats.sum / stats.count),
         count: stats.count,
       }))
       .sort((a, b) => b.averageRating - a.averageRating || a.departmentName.localeCompare(b.departmentName));
@@ -458,12 +569,13 @@ export class PrismaCfrRepository implements CfrRepository {
         total,
         submitted,
         sent,
-        averageRating: parseFloat(averageRating.toFixed(1)),
+        averageRating: roundRating(averageRating),
       },
-      trend: buckets.map((bucket) => ({
-        month: bucket.label,
-        count: trendCounts.get(bucket.key) ?? 0,
-      })),
+      satisfactionTrend: {
+        availableYears,
+        monthly,
+        yearly,
+      },
       departmentRatings,
       recentFeedback,
     };

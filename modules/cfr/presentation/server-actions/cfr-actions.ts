@@ -6,6 +6,8 @@ import { z } from "zod";
 import { PrismaCfrRepository } from "../../infrastructure/cfr.prisma-repo";
 import { buildFeedbackUrl, sendClientFeedbackEmail } from "@/lib/email";
 import { requireAuth } from "@/server/auth/require-auth";
+import { sendFeedbackSubmissionReportEmail } from "../../application/send-feedback-submission-report";
+import { buildCfrFeedbackPdf } from "../lib/cfr-feedback-pdf";
 import {
   getFeedbackExpiryDate,
   isFeedbackLinkExpired,
@@ -151,6 +153,20 @@ export async function getCfrsAction(filters?: CfrFilterInput, page?: number, lim
   }
 }
 
+export async function getCfrByIdAction(id: number) {
+  try {
+    await requireAuth();
+    if (!Number.isInteger(id) || id <= 0) {
+      return null;
+    }
+    return await cfrRepo.getCfrById(id);
+  } catch (error) {
+    rethrowNavigationErrors(error);
+    console.error("Failed to fetch CFR:", error);
+    throw new Error("Failed to fetch CFR");
+  }
+}
+
 export async function getKpisAction() {
   try {
     await requireAuth();
@@ -175,10 +191,11 @@ export async function getDashboardOverviewAction() {
 
 export async function createCfrAction(data: Record<string, unknown>) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
     const validated = cfrInputSchema.parse(data);
     const result = await cfrRepo.createCfr({
       ...validated,
+      sentByEmail: validated.status === "SENT" ? user.email : null,
       comments:
         validated.status === "SENT"
           ? null
@@ -210,6 +227,7 @@ export async function createCfrAction(data: Record<string, unknown>) {
     }
 
     revalidatePath("/cfr");
+    revalidatePath("/cfr/create");
     revalidatePath("/cfr/all");
     return { id: result.id, status: result.status };
   } catch (error) {
@@ -242,6 +260,20 @@ export async function getPublicFeedbackAction(
       return null;
     }
 
+    // Safe retry: if feedback was saved but the report email never sent, try once more.
+    if (cfr.status === "SUBMITTED" && !cfr.submissionEmailSentAt) {
+      void sendFeedbackSubmissionReportEmail(cfrRepo, cfr, buildCfrFeedbackPdf).then(
+        (emailResult) => {
+          if (emailResult.error) {
+            console.error(
+              `[CFR #${cfr.id}] Retry of submission report email failed:`,
+              emailResult.error
+            );
+          }
+        }
+      );
+    }
+
     return toPublicFeedback(cfr);
   } catch (error) {
     rethrowNavigationErrors(error);
@@ -268,6 +300,19 @@ export async function submitPublicFeedbackAction(data: Record<string, unknown>) 
       reviewedBy: validated.reviewedBy,
       reviewedAt: validated.reviewedAt,
     });
+
+    // Feedback is already saved. Email failures must not roll back submission.
+    const emailResult = await sendFeedbackSubmissionReportEmail(
+      cfrRepo,
+      result,
+      buildCfrFeedbackPdf
+    );
+    if (emailResult.error) {
+      console.error(
+        `[CFR #${result.id}] Feedback saved but submission report email was not sent:`,
+        emailResult.error
+      );
+    }
 
     revalidatePath("/cfr");
     revalidatePath("/cfr/all");

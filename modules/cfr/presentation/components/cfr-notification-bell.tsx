@@ -70,7 +70,7 @@ export function CfrNotificationBell() {
       );
     }
     setOpen(false);
-    router.push("/cfr/all");
+    router.push(`/cfr/all?view=${notification.cfrId}`);
     router.refresh();
   };
 

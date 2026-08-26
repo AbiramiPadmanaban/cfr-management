@@ -103,8 +103,8 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
   };
 
   return (
-    <div className="cfr-fade-up mx-auto max-w-6xl space-y-6">
-      <div>
+    <div className="cfr-fade-up flex w-full min-w-0 flex-1 flex-col gap-6">
+      <div className="w-full shrink-0">
         <h2 className="text-2xl font-semibold tracking-tight text-ink">Users</h2>
         <p className="mt-1 text-sm text-muted">
           Create accounts by email. Users receive a secure link to set their password. There is no
@@ -113,23 +113,26 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
       </div>
 
       {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800">
+        <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800">
           {success}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+        <div className="w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
-      <section className={`${cardClass} p-5 sm:p-6`}>
+      <section className={`w-full ${cardClass} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-2">
           <UserPlus className="h-4 w-4 text-accent" aria-hidden="true" />
           <h3 className="text-base font-semibold text-ink">Add user</h3>
         </div>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className="space-y-1.5 md:col-span-2">
+        <form
+          onSubmit={handleCreate}
+          className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <div className="space-y-1.5 sm:col-span-2">
             <label htmlFor="user-email" className={labelClass}>
               Email address
             </label>
@@ -171,7 +174,7 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
               <option value="ADMIN">Admin</option>
             </select>
           </div>
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button type="submit" disabled={isPending} className={primaryButtonClass}>
               {isPending && !rowPendingId ? (
                 <>
@@ -189,26 +192,28 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
         </form>
       </section>
 
-      <section className={`${cardClass} overflow-hidden`}>
-        <div className="border-b border-line px-5 py-4 sm:px-6">
+      <section className={`flex w-full min-h-0 flex-1 flex-col overflow-hidden ${cardClass}`}>
+        <div className="shrink-0 border-b border-line px-5 py-4 sm:px-6">
           <h3 className="text-base font-semibold text-ink">Directory</h3>
         </div>
         {users.length === 0 ? (
-          <div className="px-5 py-12 text-center sm:px-6">
-            <p className="text-sm font-medium text-ink">No users yet.</p>
-            <p className="mt-1 text-sm text-muted">Create the first account above.</p>
+          <div className="flex flex-1 items-center justify-center px-5 py-12 text-center sm:px-6">
+            <div>
+              <p className="text-sm font-medium text-ink">No users yet.</p>
+              <p className="mt-1 text-sm text-muted">Create the first account above.</p>
+            </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] table-fixed border-collapse text-left text-sm">
-              <thead>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="sticky top-0 bg-white">
                 <tr className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
                   <th className="px-5 py-3 font-medium sm:px-6">User</th>
-                  <th className="w-[12%] px-3 py-3 font-medium">Role</th>
-                  <th className="w-[14%] px-3 py-3 font-medium">Status</th>
-                  <th className="w-[16%] px-3 py-3 font-medium">Password</th>
-                  <th className="w-[14%] px-3 py-3 font-medium">Created</th>
-                  <th className="w-[22%] px-3 py-3 text-right font-medium">Actions</th>
+                  <th className="px-3 py-3 font-medium">Role</th>
+                  <th className="px-3 py-3 font-medium">Status</th>
+                  <th className="px-3 py-3 font-medium">Password</th>
+                  <th className="px-3 py-3 font-medium">Created</th>
+                  <th className="px-3 py-3 text-right font-medium sm:px-6">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -217,10 +222,10 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
                   return (
                     <tr key={user.id} className="hover:bg-zinc-50/80">
                       <td className="px-5 py-3.5 sm:px-6">
-                        <div className="truncate font-medium text-ink" title={user.email}>
+                        <div className="font-medium text-ink" title={user.email}>
                           {user.email}
                         </div>
-                        <div className="mt-0.5 truncate text-xs text-muted">
+                        <div className="mt-0.5 text-xs text-muted">
                           {user.name || "No name"}
                         </div>
                       </td>
@@ -240,7 +245,7 @@ export function UsersAdminView({ users: initialUsers }: { users: PublicAuthUser[
                         {user.passwordConfigured ? "Configured" : "Pending setup"}
                       </td>
                       <td className="px-3 py-3.5 text-muted">{formatDate(user.createdAt)}</td>
-                      <td className="px-3 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-6">
                         <div className="flex justify-end gap-2">
                           {!user.passwordConfigured ? (
                             <button

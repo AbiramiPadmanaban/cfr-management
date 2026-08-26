@@ -1,27 +1,114 @@
+import fs from "node:fs";
+import path from "node:path";
 import nodemailer from "nodemailer";
+import type { Attachment } from "nodemailer/lib/mailer";
 
 export interface ClientFeedbackEmailInput {
   to: string;
+  cc?: string | null;
   clientName: string;
   projectName: string;
   projectNumber: string;
   feedbackUrl: string;
 }
 
+const SOLIDPRO_LOGO_CID = "solidpro-logo@cfr";
+
+/**
+ * Base app URL from environment. Never hardcode a domain in call sites.
+ * Set APP_URL (or NEXT_PUBLIC_APP_URL) in .env.
+ */
 export function getAppUrl(): string {
-  const raw =
-    process.env.APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000";
-  return raw.replace(/\/$/, "");
+  const raw = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (!raw?.trim()) {
+    throw new Error("APP_URL (or NEXT_PUBLIC_APP_URL) is not set. Add it to your .env file.");
+  }
+  return raw.trim().replace(/\/$/, "");
+}
+
+/**
+ * Absolute logo URL for emails.
+ * Prefer EMAIL_LOGO_URL; otherwise derive from APP_URL + SP_Logo.png
+ * (full SOLiDPRO wordmark from public/SP_Logo.png).
+ */
+export function getEmailLogoUrl(): string {
+  const fromEnv = process.env.EMAIL_LOGO_URL?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  return `${getAppUrl()}/SP_Logo.png`;
 }
 
 export function buildFeedbackUrl(token: string): string {
   return `${getAppUrl()}/feedback/${token}`;
 }
 
-function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
-  return `
+function resolveLocalLogoPath(absoluteLogoUrl: string): string | null {
+  try {
+    const pathname = new URL(absoluteLogoUrl).pathname;
+    const fileName = path.basename(pathname);
+    if (!fileName) {
+      return null;
+    }
+    const candidates = [
+      path.join(process.cwd(), "public", fileName),
+      path.join(process.cwd(), "public", "SP_Logo.png"),
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  } catch {
+    // ignore invalid URL — fall back to absolute src only
+  }
+  return null;
+}
+
+function resolveEmailLogo(): { src: string; absoluteUrl: string; attachment?: Attachment } {
+  const absoluteUrl = getEmailLogoUrl();
+  const localPath = resolveLocalLogoPath(absoluteUrl);
+
+  // Prefer inline CID so Outlook does not need to fetch APP_URL (e.g. localhost).
+  // The logo asset still comes from public/ via EMAIL_LOGO_URL / APP_URL configuration.
+  if (localPath) {
+    return {
+      absoluteUrl,
+      src: `cid:${SOLIDPRO_LOGO_CID}`,
+      attachment: {
+        filename: path.basename(localPath),
+        path: localPath,
+        cid: SOLIDPRO_LOGO_CID,
+        contentType: "image/png",
+        contentDisposition: "inline",
+      },
+    };
+  }
+
+  return { absoluteUrl, src: absoluteUrl };
+}
+
+function emailLogoBlock(): { html: string; attachment?: Attachment } {
+  const logo = resolveEmailLogo();
+  const html = `
+    <tr>
+      <td align="center" style="padding:32px 32px 12px;background-color:#ffffff;">
+        <img
+          src="${escapeHtml(logo.src)}"
+          alt="SOLiDPRO"
+          width="220"
+          style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;width:220px;max-width:80%;height:auto;"
+        />
+      </td>
+    </tr>
+  `;
+  return { html, attachment: logo.attachment };
+}
+
+function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): { html: string; attachment?: Attachment } {
+  const logo = emailLogoBlock();
+
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -34,14 +121,9 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+            ${logo.html}
             <tr>
-              <td style="background-color:#0f766e;padding:24px 32px;">
-                <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.04em;">SOLiDPRO</p>
-                <p style="margin:6px 0 0;color:#ccfbf1;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Customer Feedback Review</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px;">
+              <td style="padding:24px 32px 32px;">
                 <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">Hi ${escapeHtml(input.clientName)},</p>
                 <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#52525b;">
                   You have been invited to provide customer feedback for the following project. Please rate Quality of Work, Delivery Timeliness, Communication Quality, Technical Competence, and Overall Satisfaction.
@@ -78,6 +160,8 @@ function buildFeedbackEmailHtml(input: ClientFeedbackEmailInput): string {
   </body>
 </html>
 `.trim();
+
+  return { html, attachment: logo.attachment };
 }
 
 function detailRow(label: string, value: string, last = false): string {
@@ -98,7 +182,7 @@ function escapeHtml(value: string): string {
 }
 
 export async function sendClientFeedbackEmail(input: ClientFeedbackEmailInput): Promise<void> {
-  const html = buildFeedbackEmailHtml(input);
+  const { html, attachment } = buildFeedbackEmailHtml(input);
   const subject = `Feedback requested: ${input.projectName}`;
   const text = [
     `Dear ${input.clientName},`,
@@ -112,11 +196,139 @@ export async function sendClientFeedbackEmail(input: ClientFeedbackEmailInput): 
     "This link expires in 24 hours.",
   ].join("\n");
 
+  const cc =
+    input.cc?.trim() &&
+    input.cc.trim().toLowerCase() !== input.to.trim().toLowerCase()
+      ? input.cc.trim()
+      : undefined;
+
   await sendMail({
     to: input.to,
+    cc,
     subject,
     text,
     html,
+    attachments: attachment ? [attachment] : undefined,
+  });
+}
+
+export interface FeedbackSubmittedReportEmailInput {
+  to: string;
+  cc?: string | null;
+  clientName: string;
+  projectName: string;
+  projectNumber: string;
+  pdfFileName: string;
+  pdfBytes: Uint8Array;
+}
+
+function buildFeedbackSubmittedEmailHtml(
+  input: FeedbackSubmittedReportEmailInput
+): { html: string; attachment?: Attachment } {
+  const logo = emailLogoBlock();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customer Feedback Submitted</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f7f8fa;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7f8fa;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+            ${logo.html}
+            <tr>
+              <td style="padding:24px 32px 32px;">
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">Hello,</p>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#52525b;">
+                  The customer has successfully submitted feedback for the following project. A detailed Customer Feedback Report (CFR) is attached as a PDF.
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f8fa;border:1px solid #e4e4e7;border-radius:8px;">
+                  <tr>
+                    <td style="padding:20px 24px;">
+                      ${detailRow("Project", input.projectName)}
+                      ${detailRow("Project Number", input.projectNumber)}
+                      ${detailRow("Client", input.clientName, true)}
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#52525b;">
+                  Please find the attached report: <strong style="color:#18181b;">${escapeHtml(input.pdfFileName)}</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px;border-top:1px solid #e4e4e7;background:#f7f8fa;">
+                <p style="margin:0;font-size:11px;color:#a1a1aa;text-align:center;">© 2026 SOLiDPRO. This is an automated message.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`.trim();
+
+  return { html, attachment: logo.attachment };
+}
+
+export function buildCfrSubmissionReportFileName(
+  projectNumber: string,
+  reviewPeriod: string
+): string {
+  const sanitize = (value: string) =>
+    value
+      .trim()
+      .replace(/[^\w.-]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "") || "report";
+  return `CFR_${sanitize(projectNumber)}_${sanitize(reviewPeriod)}.pdf`;
+}
+
+export async function sendFeedbackSubmittedReportEmail(
+  input: FeedbackSubmittedReportEmailInput
+): Promise<void> {
+  const { html, attachment: logoAttachment } = buildFeedbackSubmittedEmailHtml(input);
+  const subject = `Customer Feedback Submitted – ${input.projectName}`;
+  const text = [
+    "Hello,",
+    "",
+    "The customer has successfully submitted feedback for the following project.",
+    `Project: ${input.projectName}`,
+    `Project Number: ${input.projectNumber}`,
+    `Client: ${input.clientName}`,
+    "",
+    `The detailed CFR report is attached as ${input.pdfFileName}.`,
+  ].join("\n");
+
+  const attachments: Attachment[] = [];
+  if (logoAttachment) {
+    attachments.push(logoAttachment);
+  }
+  attachments.push({
+    filename: input.pdfFileName,
+    content: Buffer.from(input.pdfBytes),
+    contentType: "application/pdf",
+  });
+
+  const cc =
+    input.cc?.trim() &&
+    input.cc.trim().toLowerCase() !== input.to.trim().toLowerCase()
+      ? input.cc.trim()
+      : undefined;
+
+  await sendMail({
+    to: input.to,
+    cc,
+    subject,
+    text,
+    html,
+    attachments,
   });
 }
 
@@ -152,8 +364,10 @@ function buildAuthEmailHtml(input: {
   buttonLabel: string;
   buttonUrl: string;
   expiryNote: string;
-}): string {
-  return `
+}): { html: string; attachment?: Attachment } {
+  const logo = emailLogoBlock();
+
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -166,14 +380,10 @@ function buildAuthEmailHtml(input: {
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+            ${logo.html}
             <tr>
-              <td style="background-color:#0f766e;padding:24px 32px;">
-                <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.04em;">SOLiDPRO</p>
-                <p style="margin:6px 0 0;color:#ccfbf1;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(input.eyebrow)}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px;">
+              <td style="padding:24px 32px 32px;">
+                <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#ADAEB0;text-align:center;">${escapeHtml(input.eyebrow)}</p>
                 <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">${escapeHtml(input.heading)}</p>
                 <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#52525b;">${escapeHtml(input.intro)}</p>
                 <p style="margin:0 0 16px;text-align:center;">
@@ -200,13 +410,15 @@ function buildAuthEmailHtml(input: {
   </body>
 </html>
 `.trim();
+
+  return { html, attachment: logo.attachment };
 }
 
 export async function sendPasswordSetupEmail(input: PasswordSetupEmailInput): Promise<void> {
   const name = greetingName(input.name);
   const subject = "Set up your SOLiDPRO CFR account";
   const intro = `Hi ${name}, an administrator created a Customer Feedback Report account for you. Use the button below to set your password. This link expires in 48 hours and can be used only once.`;
-  const html = buildAuthEmailHtml({
+  const { html, attachment } = buildAuthEmailHtml({
     eyebrow: "Customer Feedback Report",
     heading: "Set your password",
     intro,
@@ -224,14 +436,20 @@ export async function sendPasswordSetupEmail(input: PasswordSetupEmailInput): Pr
     "This link expires in 48 hours and can be used only once.",
   ].join("\n");
 
-  await sendMail({ to: input.to, subject, text, html });
+  await sendMail({
+    to: input.to,
+    subject,
+    text,
+    html,
+    attachments: attachment ? [attachment] : undefined,
+  });
 }
 
 export async function sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<void> {
   const name = greetingName(input.name);
   const subject = "Reset your SOLiDPRO CFR password";
   const intro = `Hi ${name}, we received a request to reset your Customer Feedback Report password. Use the button below to choose a new password. This link expires in 1 hour and can be used only once. If you did not request this, you can ignore this email.`;
-  const html = buildAuthEmailHtml({
+  const { html, attachment } = buildAuthEmailHtml({
     eyebrow: "Customer Feedback Report",
     heading: "Reset your password",
     intro,
@@ -250,10 +468,23 @@ export async function sendPasswordResetEmail(input: PasswordResetEmailInput): Pr
     "If you did not request this, you can ignore this email.",
   ].join("\n");
 
-  await sendMail({ to: input.to, subject, text, html });
+  await sendMail({
+    to: input.to,
+    subject,
+    text,
+    html,
+    attachments: attachment ? [attachment] : undefined,
+  });
 }
 
-async function sendMail(input: { to: string; subject: string; text: string; html: string }): Promise<void> {
+async function sendMail(input: {
+  to: string;
+  cc?: string;
+  subject: string;
+  text: string;
+  html: string;
+  attachments?: Attachment[];
+}): Promise<void> {
   const smtpUser = process.env.SMTP_USER || "Abirami.P@Solidpro-es.com";
   const smtpPass = process.env.SMTP_PASS;
   const smtpHost = process.env.SMTP_HOST || "smtp.office365.com";
@@ -281,9 +512,11 @@ async function sendMail(input: { to: string; subject: string; text: string; html
     await transporter.sendMail({
       from: process.env.SMTP_FROM || smtpUser,
       to: input.to,
+      cc: input.cc || undefined,
       subject: input.subject,
       text: input.text,
       html: input.html,
+      attachments: input.attachments,
     });
   } catch (error) {
     throw new Error(formatSmtpError(error));

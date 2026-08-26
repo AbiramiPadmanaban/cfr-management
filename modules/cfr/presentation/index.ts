@@ -10,3 +10,10 @@ export {
   CfrInvalidFeedbackView,
   CfrExpiredFeedbackView,
 } from "./views/cfr-public-feedback-view";
+export {
+  getDashboardOverviewHandler,
+  getCreateCfrPageDataHandler,
+  getAllCfrsPageDataHandler,
+  getPublicFeedbackPageDataHandler,
+  downloadPublicFeedbackPdfHandler,
+} from "./api";

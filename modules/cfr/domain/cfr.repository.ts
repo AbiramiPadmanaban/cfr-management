@@ -11,6 +11,10 @@ export interface CfrFilterInput {
   projectId?: string;
   status?: CfrStatus;
   search?: string;
+  /** Inclusive start date (YYYY-MM-DD) filtered on createdAt */
+  dateFrom?: string;
+  /** Inclusive end date (YYYY-MM-DD) filtered on createdAt */
+  dateTo?: string;
 }
 
 export interface CfrCreateInput {
@@ -35,6 +39,8 @@ export interface CfrCreateInput {
   client: string;
   projectNumber: string;
   clientEmail: string;
+  /** Project lead / sender email — stored when the CFR request is sent to the client. */
+  sentByEmail?: string | null;
   documentNo?: string | null;
   revNo?: string | null;
   revDate?: Date | null;
@@ -99,12 +105,22 @@ export interface CfrKpis {
   averageRating: number;
 }
 
-export interface CfrTrendPoint {
-  month: string;
-  count: number;
+export interface CfrSatisfactionPoint {
+  key: string;
+  label: string;
+  year: number;
+  month?: number;
+  averageRating: number | null;
+}
+
+export interface CfrSatisfactionTrend {
+  availableYears: number[];
+  monthly: CfrSatisfactionPoint[];
+  yearly: CfrSatisfactionPoint[];
 }
 
 export interface CfrDepartmentRating {
+  departmentId: string;
   departmentName: string;
   averageRating: number;
   count: number;
@@ -112,7 +128,7 @@ export interface CfrDepartmentRating {
 
 export interface CfrDashboardOverview {
   kpis: CfrKpis;
-  trend: CfrTrendPoint[];
+  satisfactionTrend: CfrSatisfactionTrend;
   departmentRatings: CfrDepartmentRating[];
   recentFeedback: CfrWithProject[];
 }
@@ -137,6 +153,13 @@ export interface CfrRepository {
   getCfrByFeedbackToken(token: string): Promise<CfrWithProject | null>;
   createCfr(data: CfrCreateInput): Promise<Cfr>;
   submitFeedback(token: string, data: CfrFeedbackSubmitInput): Promise<CfrWithProject>;
+  /**
+   * Atomically claims the submission-report email slot (sets submissionEmailSentAt).
+   * Returns true only for the first successful claim — used to prevent duplicate emails.
+   */
+  claimSubmissionEmailSend(id: number): Promise<boolean>;
+  /** Clears the claim so a failed send can be retried safely. */
+  releaseSubmissionEmailSend(id: number): Promise<void>;
   setActionNeeded(id: number, actionNeeded: boolean): Promise<CfrWithProject>;
   deleteCfr(id: number): Promise<void>;
   getKpis(): Promise<CfrKpis>;

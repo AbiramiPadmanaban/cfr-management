@@ -37,51 +37,66 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+export function CfrOverallRatingCard({ cfr }: { cfr: CfrWithProject }) {
+  const calculatedAvg = getCfrAverageRating(cfr);
+
+  return (
+    <div className="rounded-2xl border border-line bg-zinc-50 px-4 py-3 sm:min-w-[180px]">
+      <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
+        Overall Rating
+      </p>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <p className="text-2xl font-semibold tracking-tight text-ink">
+          {calculatedAvg != null ? `${calculatedAvg.toFixed(1)} / 5` : "—"}
+        </p>
+        {calculatedAvg != null ? <Stars rating={calculatedAvg} /> : null}
+      </div>
+      <p className="mt-1 text-[11px] text-muted">Average of all 5 criteria</p>
+    </div>
+  );
+}
+
 export function CfrViewDialog({ cfr }: CfrViewDialogProps) {
   const formatShort = (value: Date | string) => {
     const date = new Date(value);
     return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
-  const calculatedAvg = getCfrAverageRating(cfr);
-  const hasRatings = calculatedAvg != null;
+  const hasRatings = getCfrAverageRating(cfr) != null;
   const received = cfr.status === "SUBMITTED";
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-zinc-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
-            Overall Rating
-          </p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-ink">
-            {calculatedAvg != null ? `${calculatedAvg.toFixed(1)} / 5` : "—"}
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          {calculatedAvg != null ? <Stars rating={calculatedAvg} /> : null}
-          <p className="text-xs text-muted">Average of all 5 criteria</p>
-        </div>
-      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-line p-4">
+          <h4 className="text-sm font-semibold text-ink">Project Details</h4>
+          <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <Field label="Department">{cfr.project.department.name}</Field>
+            <Field label="Project">{cfr.project.projectName}</Field>
+            <Field label="Project Number">
+              <span className="font-mono">{cfr.projectNumber}</span>
+            </Field>
+            <Field label="Review Period">{cfr.reviewPeriod}</Field>
+            <Field label="Start Date">{formatShort(cfr.project.projectStartDate)}</Field>
+            <Field label="End Date">{formatShort(cfr.project.projectEndDate)}</Field>
+          </div>
+        </section>
 
-      <section className="rounded-2xl border border-line p-4">
-        <h4 className="text-sm font-semibold text-ink">Project Information</h4>
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <Field label="Department">{cfr.project.department.name}</Field>
-          <Field label="Project">{cfr.project.projectName}</Field>
-          <Field label="Client">{cfr.client}</Field>
-          <Field label="Project Number">
-            <span className="font-mono">{cfr.projectNumber}</span>
-          </Field>
-          <Field label="Start Date">{formatShort(cfr.project.projectStartDate)}</Field>
-          <Field label="End Date">{formatShort(cfr.project.projectEndDate)}</Field>
-          <Field label="Review Period">{cfr.reviewPeriod}</Field>
-          <Field label="Client Email">{cfr.clientEmail}</Field>
-          <Field label="Document No">{cfr.documentNo || "—"}</Field>
-          <Field label="Rev No">{cfr.revNo || "—"}</Field>
-          <Field label="Rev Date">{cfr.revDate ? formatShort(cfr.revDate) : "—"}</Field>
-        </div>
-      </section>
+        <section className="rounded-2xl border border-line p-4">
+          <h4 className="text-sm font-semibold text-ink">Client & Document Info</h4>
+          <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <Field label="Client">{cfr.client}</Field>
+            <Field label="Client Email">
+              <span className="block truncate text-xs font-medium" title={cfr.clientEmail}>
+                {cfr.clientEmail}
+              </span>
+            </Field>
+            <Field label="Document Number">{cfr.documentNo || "—"}</Field>
+            <Field label="Revision Number">{cfr.revNo || "—"}</Field>
+            <Field label="Revision Date">{cfr.revDate ? formatShort(cfr.revDate) : "—"}</Field>
+          </div>
+        </section>
+      </div>
 
       <section>
         <div className="mb-3 flex items-center justify-between">

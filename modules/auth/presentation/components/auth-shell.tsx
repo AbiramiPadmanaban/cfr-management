@@ -16,7 +16,7 @@ export function AuthShell({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-ink">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center px-4 py-4 sm:px-8">
+        <div className="flex w-full items-center justify-start px-4 py-4 sm:px-8">
           <SolidProBrand subtitle="Customer Feedback Report" tone="light" />
         </div>
       </header>

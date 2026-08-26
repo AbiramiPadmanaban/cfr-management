@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BriefcaseBusiness, FileText, Send } from "lucide-react";
 import type { Department, Project } from "@/app/generated/prisma";
 import { createCfrAction } from "../server-actions/cfr-actions";
+import { showCfrToast } from "../components/cfr-success-toast";
 import {
   cardClass,
   fieldClass,
@@ -37,6 +38,22 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setDepartmentId("");
+    setProjectId("");
+    setProjectNameText("");
+    setClient("");
+    setClientEmail("");
+    setProjectNumber("");
+    setProjectStartDate(null);
+    setProjectEndDate(null);
+    setReviewPeriod("");
+    setDocumentNo("");
+    setRevNo("");
+    setRevDate(null);
+    setErrors({});
+  };
 
   const clearError = (key: string) => {
     setErrors((prev) => {
@@ -169,7 +186,9 @@ export function CfrCreateView({ departments }: CfrCreateViewProps) {
         revDate: revDate?.toISOString() || null,
       });
 
+      showCfrToast("Feedback link sent successfully to the client.");
       router.push("/cfr/all");
+      router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to send CFR";
       if (msg.toLowerCase().includes("already exists")) {

@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, FilePlus2 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Department, Project } from "@/app/generated/prisma";
 import type { CfrWithProject } from "../../domain/cfr.repository";
+import { getCfrByIdAction } from "../server-actions/cfr-actions";
 import { CfrFilters } from "../components/cfr-filters";
 import { CfrTable } from "../components/cfr-table";
-import { CfrViewDialog } from "../components/cfr-view-dialog";
+import { CfrViewDialog, CfrOverallRatingCard } from "../components/cfr-view-dialog";
 import { CfrModal } from "../components/cfr-modal";
 import { CfrStatusBadge } from "../components/cfr-status-badge";
-import { cardClass, primaryButtonClass } from "../components/cfr-ui";
+import { cardClass } from "../components/cfr-ui";
 
 export interface CfrPageViewProps {
   departments: (Department & { projects: Project[] })[];
@@ -37,7 +37,10 @@ export function CfrPageView({
   const selectedDepartmentId = searchParams.get("departmentId") || "";
   const selectedProjectId = searchParams.get("projectId") || "";
   const selectedStatus = searchParams.get("status") || "";
+  const selectedDateFrom = searchParams.get("dateFrom") || "";
+  const selectedDateTo = searchParams.get("dateTo") || "";
   const searchQuery = searchParams.get("search") || "";
+  const viewCfrId = searchParams.get("view");
 
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
@@ -55,6 +58,48 @@ export function CfrPageView({
     return () => clearTimeout(handler);
   }, [localSearch]);
 
+  useEffect(() => {
+    if (!viewCfrId) {
+      return;
+    }
+
+    const id = Number.parseInt(viewCfrId, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+      return;
+    }
+
+    const fromTable = cfrs.find((cfr) => cfr.id === id);
+    if (fromTable) {
+      setSelectedCfr(fromTable);
+      return;
+    }
+
+    let cancelled = false;
+    void getCfrByIdAction(id).then((cfr) => {
+      if (!cancelled && cfr) {
+        setSelectedCfr(cfr);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewCfrId, cfrs]);
+
+  const clearViewParam = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("view");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
+
+  const handleCloseView = () => {
+    setSelectedCfr(null);
+    if (viewCfrId) {
+      clearViewParam();
+    }
+  };
+
   const updateFilters = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
 
@@ -67,11 +112,24 @@ export function CfrPageView({
     });
 
     if ("departmentId" in updates) {
-      params.delete("projectId");
+      const nextDepartmentId = updates.departmentId ?? "";
+      if (nextDepartmentId) {
+        const currentProjectId = params.get("projectId");
+        const department = departments.find((d) => d.id === nextDepartmentId);
+        const projectStillValid = department?.projects.some((p) => p.id === currentProjectId);
+        if (!projectStillValid) {
+          params.delete("projectId");
+        }
+      }
       params.set("page", "1");
     }
 
-    if ("projectId" in updates || "status" in updates) {
+    if (
+      "projectId" in updates ||
+      "status" in updates ||
+      "dateFrom" in updates ||
+      "dateTo" in updates
+    ) {
       params.set("page", "1");
     }
 
@@ -95,23 +153,12 @@ export function CfrPageView({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">
-              Customer Feedback Reviews
-            </h2>
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-zinc-100 px-2 text-[11px] font-semibold text-ink">
-              {totalCount}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-muted">View and manage all customer feedback requests.</p>
-        </div>
-        <Link href="/cfr/create" className={primaryButtonClass}>
-          <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-          Create CFR
-        </Link>
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
+      <div className="shrink-0">
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">
+          Customer Feedback Reviews
+        </h2>
+        <p className="mt-1 text-sm text-muted">View and manage all customer feedback requests.</p>
       </div>
 
       <div className="shrink-0">
@@ -120,10 +167,13 @@ export function CfrPageView({
           selectedDepartmentId={selectedDepartmentId}
           selectedProjectId={selectedProjectId}
           selectedStatus={selectedStatus}
+          selectedDateFrom={selectedDateFrom}
+          selectedDateTo={selectedDateTo}
           searchQuery={localSearch}
           onDepartmentChange={(id) => updateFilters({ departmentId: id })}
           onProjectChange={(id) => updateFilters({ projectId: id })}
           onStatusChange={(status) => updateFilters({ status })}
+          onDateRangeChange={(dateFrom, dateTo) => updateFilters({ dateFrom, dateTo })}
           onSearchChange={setLocalSearch}
           onClearFilters={handleClearFilters}
         />
@@ -186,7 +236,8 @@ export function CfrPageView({
           title={`CFR-${selectedCfr.id}`}
           subtitle={selectedCfr.project.projectName}
           badge={<CfrStatusBadge status={selectedCfr.status} />}
-          onClose={() => setSelectedCfr(null)}
+          headerAside={<CfrOverallRatingCard cfr={selectedCfr} />}
+          onClose={handleCloseView}
         >
           <CfrViewDialog cfr={selectedCfr} />
         </CfrModal>

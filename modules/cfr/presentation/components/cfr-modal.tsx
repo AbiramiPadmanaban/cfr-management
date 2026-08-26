@@ -6,11 +6,19 @@ export interface CfrModalProps {
   title: string;
   subtitle?: string;
   badge?: ReactNode;
+  headerAside?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 }
 
-export function CfrModal({ title, subtitle, badge, onClose, children }: CfrModalProps) {
+export function CfrModal({
+  title,
+  subtitle,
+  badge,
+  headerAside,
+  onClose,
+  children,
+}: CfrModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
@@ -25,15 +33,18 @@ export function CfrModal({ title, subtitle, badge, onClose, children }: CfrModal
         aria-labelledby="cfr-modal-title"
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <SolidProBrand subtitle="Customer Feedback Report" tone="light" />
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <h3 id="cfr-modal-title" className="text-lg font-semibold tracking-tight text-ink">
-                {title}
-              </h3>
-              {badge}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <SolidProBrand subtitle="Customer Feedback Report" tone="light" />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <h3 id="cfr-modal-title" className="text-lg font-semibold tracking-tight text-ink">
+                  {title}
+                </h3>
+                {badge}
+              </div>
+              {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
             </div>
-            {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+            {headerAside ? <div className="shrink-0 sm:ml-4">{headerAside}</div> : null}
           </div>
           <button
             type="button"

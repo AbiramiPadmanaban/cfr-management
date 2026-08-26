@@ -54,12 +54,14 @@ model Cfr {
   client                String
   projectNumber         String
   clientEmail           String
+  sentByEmail           String?
   documentNo            String?
   revNo                 String?
   revDate               DateTime?
   feedbackToken         String?   @unique
   feedbackSentAt        DateTime?
   feedbackSubmittedAt   DateTime?
+  submissionEmailSentAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)

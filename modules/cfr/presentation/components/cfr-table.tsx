@@ -29,24 +29,18 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
         <tr className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
           <th className="w-8 px-2 py-3 font-medium">#</th>
           <th className="px-2 py-3 font-medium">Project</th>
-          <th className="w-[11%] px-2 py-3 font-medium">Department</th>
-          <th className="w-[9%] px-2 py-3 font-medium">Client</th>
-          <th className="w-[9%] px-2 py-3 font-medium">Created</th>
-          <th className="w-[11%] px-2 py-3 font-medium">Overall Rating</th>
-          <th className="w-[9%] px-2 py-3 font-medium">Status</th>
-          <th className="w-[10%] px-2 py-3 font-medium">Date Received</th>
-          <th className="w-[8%] px-2 py-3 font-medium">By</th>
-          <th className="w-[9%] px-2 py-3 font-medium">Action Needed</th>
+          <th className="w-[12%] px-2 py-3 font-medium">Department</th>
+          <th className="w-[10%] px-2 py-3 font-medium">Client</th>
+          <th className="w-[12%] px-2 py-3 font-medium">Overall Rating</th>
+          <th className="w-[10%] px-2 py-3 font-medium">Status</th>
+          <th className="w-[11%] px-2 py-3 font-medium">Date Received</th>
+          <th className="w-[9%] px-2 py-3 font-medium">By</th>
+          <th className="w-[10%] px-2 py-3 font-medium">Action Needed</th>
           <th className="w-[88px] px-2 py-3 text-right font-medium">Actions</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
         {cfrs.map((cfr, index) => {
-          const created = new Date(cfr.createdAt);
-          const createdDate = `${String(created.getDate()).padStart(2, "0")}/${String(
-            created.getMonth() + 1
-          ).padStart(2, "0")}/${created.getFullYear()}`;
-
           const averageRating = getCfrAverageRating(cfr);
 
           return (
@@ -60,7 +54,6 @@ export function CfrTable({ cfrs, onView }: CfrTableProps) {
               </td>
               <td className="truncate px-2 py-3.5 text-ink">{cfr.project.department.name}</td>
               <td className="truncate px-2 py-3.5 text-ink">{cfr.client}</td>
-              <td className="px-2 py-3.5 whitespace-nowrap text-muted">{createdDate}</td>
               <td className="px-2 py-3.5 font-semibold whitespace-nowrap text-ink">
                 {averageRating != null ? `${averageRating.toFixed(1)} / 5` : "Pending"}
               </td>
