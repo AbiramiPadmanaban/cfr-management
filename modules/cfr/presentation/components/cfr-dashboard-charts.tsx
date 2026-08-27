@@ -120,7 +120,7 @@ export function CfrSatisfactionTrendChart({ trend }: { trend: CfrSatisfactionTre
   };
 
   return (
-    <section className={`${cardClass} flex h-full min-h-[280px] flex-col overflow-hidden p-4 sm:p-5 lg:min-h-0`}>
+    <section className={`${cardClass} flex h-full min-h-[280px] min-w-0 flex-col overflow-hidden p-4 sm:p-5 lg:min-h-0`}>
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-ink">Customer Satisfaction Trend</h3>
@@ -282,7 +282,7 @@ export function CfrDepartmentRatingChart({
   const rows = departmentRatings.slice(0, 7);
 
   return (
-    <section className={`${cardClass} flex h-full min-h-[280px] flex-col overflow-hidden p-4 sm:p-5 lg:min-h-0`}>
+    <section className={`${cardClass} flex h-full min-h-[280px] min-w-0 flex-col overflow-hidden p-4 sm:p-5 lg:min-h-0`}>
       <h3 className="shrink-0 text-base font-semibold text-ink">Department-wise Rating</h3>
       {rows.length === 0 ? (
         <p className="mt-8 flex-1 text-center text-sm text-muted">No department ratings yet.</p>
@@ -336,7 +336,7 @@ export function CfrFeedbackStatusChart({
 
   return (
     <section
-      className={`${cardClass} flex h-full min-h-0 flex-col ${compact ? "px-4 py-3" : "p-4 sm:p-5"}`}
+      className={`${cardClass} flex h-full min-h-0 min-w-0 flex-col ${compact ? "px-4 py-3" : "p-4 sm:p-5"}`}
     >
       <h3 className={`shrink-0 font-semibold text-ink ${compact ? "text-sm" : "text-base"}`}>
         Feedback Status

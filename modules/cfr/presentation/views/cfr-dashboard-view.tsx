@@ -22,14 +22,18 @@ export function CfrDashboardView({ overview }: CfrDashboardViewProps) {
         </p>
       </div>
 
-      <div className="grid shrink-0 grid-cols-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(200px,240px)]">
+      <div className="grid shrink-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <CfrKpiCards kpis={kpis} />
         <CfrFeedbackStatusChart kpis={kpis} compact />
       </div>
 
       <div className="grid min-h-0 flex-none grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-2 lg:overflow-hidden">
-        <CfrSatisfactionTrendChart trend={satisfactionTrend} />
-        <CfrDepartmentRatingChart departmentRatings={departmentRatings} />
+        <div className="min-h-0 min-w-0">
+          <CfrSatisfactionTrendChart trend={satisfactionTrend} />
+        </div>
+        <div className="min-h-0 min-w-0">
+          <CfrDepartmentRatingChart departmentRatings={departmentRatings} />
+        </div>
       </div>
     </div>
   );

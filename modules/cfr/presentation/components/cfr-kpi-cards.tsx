@@ -48,31 +48,37 @@ export function CfrKpiCards({ kpis }: CfrKpiCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <>
       {cards.map((card) => (
         <Link
           key={card.label}
           href={card.href}
-          className={`${cardClass} flex flex-col justify-center px-4 py-3 transition-colors hover:border-accent/40 hover:bg-zinc-50/80`}
+          className={`${cardClass} flex min-h-0 min-w-0 flex-col px-4 py-3 transition-colors hover:border-accent/40 hover:bg-zinc-50/80`}
           title={`View ${card.label.toLowerCase()}`}
         >
-          <p className="text-xs font-medium text-muted">{card.label}</p>
-          <p className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{card.value}</p>
-          <p className="mt-1 text-[11px] text-muted">{card.hint}</p>
+          <p className="shrink-0 text-sm font-semibold text-ink">{card.label}</p>
+          <div className="flex flex-1 items-center justify-center py-2">
+            <p className="text-3xl font-semibold tracking-tight text-ink">{card.value}</p>
+          </div>
+          <p className="shrink-0 text-center text-[11px] text-muted">{card.hint}</p>
         </Link>
       ))}
       <Link
         href={allCfrsHref({ status: "SUBMITTED" })}
-        className={`${cardClass} flex flex-col justify-center px-4 py-3 transition-colors hover:border-accent/40 hover:bg-zinc-50/80`}
+        className={`${cardClass} flex min-h-0 min-w-0 flex-col px-4 py-3 transition-colors hover:border-accent/40 hover:bg-zinc-50/80`}
         title="View submitted CFRs"
       >
-        <p className="text-xs font-medium text-muted">Overall Organization Rating</p>
-        <p className="mt-1.5 flex items-center gap-1.5 text-2xl font-semibold tracking-tight text-ink">
-          <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
-          {kpis.submitted > 0 ? `${kpis.averageRating.toFixed(1)} / 5` : "—"}
-        </p>
-        <p className="mt-1 text-[11px] text-muted">Overall score</p>
+        <p className="shrink-0 text-sm font-semibold text-ink">Overall Organization Rating</p>
+        <div className="flex flex-1 items-center justify-center py-2">
+          <p className="flex items-center gap-1.5 text-3xl font-semibold tracking-tight text-ink">
+            <Star className="h-5 w-5 shrink-0 fill-amber-400 text-amber-400" aria-hidden="true" />
+            <span className="truncate">
+              {kpis.submitted > 0 ? `${kpis.averageRating.toFixed(1)} / 5` : "—"}
+            </span>
+          </p>
+        </div>
+        <p className="shrink-0 text-center text-[11px] text-muted">Overall score</p>
       </Link>
-    </div>
+    </>
   );
 }
